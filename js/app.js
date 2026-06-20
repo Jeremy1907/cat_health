@@ -1,6 +1,6 @@
 /**
  * Cat Health Checker MVP Main Application Logic
- * Refactored to support unique IDs, member registration, canvas-based photo resizing, and login states.
+ * Integrates unique IDs, member registration, canvas image compression, ID retrieval with mock AI image matching.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     catName: null,    // 고양이 이름
     ownerName: null,  // 반려인 이름
     catPhoto: null,   // 압축된 고양이 사진 (Base64 Data URL)
+    findCatPhoto: null, // ID 찾기 시 업로드한 임시 사진 Base64
     answers: Array(10).fill(null), // 10 questions, values: 0/1/2
     currentQuestionIndex: 0,
     isVideoUploaded: false,
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const screens = {
     main: document.getElementById('main-screen'),
     registration: document.getElementById('registration-screen'),
+    findId: document.getElementById('find-id-screen'),
     checklist: document.getElementById('checklist-screen'),
     upload: document.getElementById('upload-screen'),
     result: document.getElementById('result-screen')
@@ -44,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Registration & Login Elements
   const loginIdInput = document.getElementById('login-id-input');
   const btnLoginSubmit = document.getElementById('btn-login-submit');
+  const btnGoToFindId = document.getElementById('btn-go-to-find-id');
   
   const ownerNameInput = document.getElementById('owner-name-input');
   const regCatNameInput = document.getElementById('reg-cat-name-input');
@@ -53,6 +56,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const photoPlaceholder = document.getElementById('photo-preview-placeholder');
   const btnRegSubmit = document.getElementById('btn-reg-submit');
   
+  // Find ID Elements
+  const findOwnerNameInput = document.getElementById('find-owner-name-input');
+  const findCatNameInput = document.getElementById('find-cat-name-input');
+  const btnFindSelectPhoto = document.getElementById('btn-find-select-photo');
+  const findPhotoFileInput = document.getElementById('find-photo-file-input');
+  const findPhotoPreviewBox = document.getElementById('find-photo-preview-box');
+  const findPhotoPlaceholder = document.getElementById('find-photo-preview-placeholder');
+  const btnFindIdSubmit = document.getElementById('btn-find-id-submit');
+  const findIdLoadingBox = document.getElementById('find-id-loading-box');
+  const findIdResultBox = document.getElementById('find-id-result-box');
+  const findIdMatchNotice = document.getElementById('find-id-match-notice');
+  const foundIdDisplay = document.getElementById('found-id-display');
+  const btnCopyFoundId = document.getElementById('btn-copy-found-id');
+
   // Modal Elements
   const idModalOverlay = document.getElementById('id-modal-overlay');
   const issuedIdDisplay = document.getElementById('issued-id-display');
@@ -80,7 +97,18 @@ document.addEventListener('DOMContentLoaded', () => {
       showScreen('main-screen');
     });
 
-    // 3) Photo Selector Event
+    // 2.5) Go to Find ID Screen
+    btnGoToFindId.addEventListener('click', () => {
+      resetState();
+      showScreen('find-id-screen');
+    });
+
+    // 2.6) Go back from Find ID Screen
+    document.getElementById('btn-find-id-back').addEventListener('click', () => {
+      showScreen('main-screen');
+    });
+
+    // 3) Photo Selector Event (Registration)
     btnSelectPhoto.addEventListener('click', () => photoFileInput.click());
     photoFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -89,11 +117,27 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('이미지 파일만 선택할 수 있습니다.');
           return;
         }
-        // Compress and resize image via canvas
         compressImage(file, (base64Url) => {
           state.catPhoto = base64Url;
           photoPreviewBox.style.backgroundImage = `url(${base64Url})`;
           photoPlaceholder.style.display = 'none';
+        });
+      }
+    });
+
+    // 3.5) Photo Selector Event (Find ID)
+    btnFindSelectPhoto.addEventListener('click', () => findPhotoFileInput.click());
+    findPhotoFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        if (!file.type.startsWith('image/')) {
+          alert('이미지 파일만 선택할 수 있습니다.');
+          return;
+        }
+        compressImage(file, (base64Url) => {
+          state.findCatPhoto = base64Url;
+          findPhotoPreviewBox.style.backgroundImage = `url(${base64Url})`;
+          findPhotoPlaceholder.style.display = 'none';
         });
       }
     });
@@ -106,6 +150,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!ownerVal || !catVal) {
         alert("반려인 이름과 고양이 이름은 필수 항목입니다!");
         return;
+      }
+
+      // 사진 미등록 시 최종 확인 컨펌 창 팝업
+      if (!state.catPhoto) {
+        const confirmStart = confirm("고양이 사진 등록 없이 분석을 시작하시겠습니까?\n\n※ 사진이 등록되지 않으면 추후 고유 ID를 분실했을 때 ID 찾기 기능 이용이 완전히 불가능합니다.");
+        if (!confirmStart) {
+          return; // 취소 클릭 시 등록 화면 유지
+        }
       }
 
       // Generate unique ID
@@ -134,6 +186,78 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // 4.5) Find ID Form Submission (With mock AI face matching)
+    btnFindIdSubmit.addEventListener('click', () => {
+      const findOwner = findOwnerNameInput.value.trim();
+      const findCat = findCatNameInput.value.trim();
+
+      if (!findOwner || !findCat) {
+        alert("반려인 이름과 고양이 이름을 모두 입력해 주세요!");
+        return;
+      }
+
+      if (!state.findCatPhoto) {
+        alert("고양이 대조를 위해 사진 등록을 완료해 주세요!");
+        return;
+      }
+
+      // Search matching profile in LocalStorage
+      let foundProfile = null;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('cat_profile_')) {
+          try {
+            const profile = JSON.parse(localStorage.getItem(key));
+            if (profile.ownerName === findOwner && profile.catName === findCat) {
+              foundProfile = profile;
+              break;
+            }
+          } catch (e) {
+            // Ignore corrupted keys
+          }
+        }
+      }
+
+      if (!foundProfile) {
+        findIdResultBox.style.display = 'none';
+        alert("일치하는 고양이 등록 정보를 찾을 수 없습니다. 이름과 닉네임을 확인해 주세요.");
+        return;
+      }
+
+      // Hide result box and show loader animation for simulation
+      findIdResultBox.style.display = 'none';
+      findIdLoadingBox.style.display = 'flex';
+      btnFindIdSubmit.disabled = true;
+
+      // Simulate 2 seconds AI features extraction delay
+      setTimeout(() => {
+        findIdLoadingBox.style.display = 'none';
+        btnFindIdSubmit.disabled = false;
+
+        // Render Found result
+        if (foundProfile.catPhoto) {
+          // Both photos exist, mock AI success matching
+          findIdMatchNotice.innerHTML = `🔍 <strong>이전 고양이 사진과 특징점 대조 분석 결과</strong><br><span style="color: var(--normal);">일치율 98.4%로 동일 고양이임이 최종 확인되었습니다!</span>`;
+          foundIdDisplay.innerText = foundProfile.id;
+          findIdResultBox.style.display = 'flex';
+        } else {
+          // Original profile had no photo
+          alert("해당 계정은 최초 등록 시 고양이 사진을 등록하지 않아, 보안 정책상 사진 대조 및 ID 찾기가 불가능합니다.");
+          findIdResultBox.style.display = 'none';
+        }
+      }, 2000);
+    });
+
+    // 4.6) Copy found ID
+    btnCopyFoundId.addEventListener('click', () => {
+      const text = foundIdDisplay.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert(`ID가 복사되었습니다: ${text}\n첫 화면의 로그인 입력란에 입력해 주세요.`);
+      }).catch(() => {
+        alert(`ID 복사 실패: ${text}`);
+      });
+    });
+
     // 5) Modal buttons: Copy ID
     btnCopyId.addEventListener('click', () => {
       if (state.catId) {
@@ -148,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6) Modal buttons: Close Modal and Start Test
     btnModalClose.addEventListener('click', () => {
       idModalOverlay.style.display = 'none';
-      // Reset checklist questions answers but keep login state
       state.answers = Array(10).fill(null);
       state.currentQuestionIndex = 0;
       showScreen('checklist-screen');
@@ -237,13 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentQuestionIndex--;
         renderQuestion();
       } else {
-        // Go back to main or registration screen based on mode
-        if (state.catId) {
-          // If registered right now, go back to main screen as registration is already processed
-          showScreen('main-screen');
-        } else {
-          showScreen('main-screen');
-        }
+        showScreen('main-screen');
       }
     });
 
@@ -310,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Share Button
     document.getElementById('btn-share').addEventListener('click', () => {
-      const label = state.catName ? `${state.catName}(ID:${state.catId})` : '우리 고양이';
       window.CatResult.shareResult(state.totalScore, state.riskAssessment.level);
     });
 
@@ -329,6 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.videoFile = null;
     state.totalScore = 0;
     state.riskAssessment = null;
+    state.findCatPhoto = null;
 
     // Reset input text values
     const catInput = document.getElementById('cat-name-input');
@@ -338,10 +455,22 @@ document.addEventListener('DOMContentLoaded', () => {
     ownerNameInput.value = '';
     regCatNameInput.value = '';
     photoFileInput.value = '';
+    
+    // Find ID inputs
+    if (findOwnerNameInput) findOwnerNameInput.value = '';
+    if (findCatNameInput) findCatNameInput.value = '';
+    if (findPhotoFileInput) findPhotoFileInput.value = '';
 
     // Reset Photo previews
     photoPreviewBox.style.backgroundImage = 'none';
     photoPlaceholder.style.display = 'block';
+    
+    if (findPhotoPreviewBox) findPhotoPreviewBox.style.backgroundImage = 'none';
+    if (findPhotoPlaceholder) findPhotoPlaceholder.style.display = 'block';
+
+    // Hide retrieval boxes
+    if (findIdLoadingBox) findIdLoadingBox.style.display = 'none';
+    if (findIdResultBox) findIdResultBox.style.display = 'none';
 
     // Reset video input DOM elements
     fileInput.value = '';
@@ -368,7 +497,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update Progress Bar
     let progress = 0;
     if (screenId === 'registration-screen') {
-      progress = 10;
+      progress = 8;
+    } else if (screenId === 'find-id-screen') {
+      progress = 8;
     } else if (screenId === 'checklist-screen') {
       progress = 15 + ((state.currentQuestionIndex + 1) / 10) * 60;
     } else if (screenId === 'upload-screen') {
@@ -502,11 +633,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultCatTitle = document.getElementById('result-cat-name-title');
 
     if (state.catId) {
-      // 1) Show profile on result card
       if (profileCard) {
         profileCard.style.display = 'flex';
         
-        // Bind profile data
         document.getElementById('result-profile-name').innerText = state.catName;
         document.getElementById('result-profile-owner').innerText = `반려인: ${state.ownerName}`;
         document.getElementById('result-profile-id').innerText = `등록 ID: ${state.catId}`;
@@ -527,7 +656,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (resultCatTitle) resultCatTitle.innerText = `${state.catName}의`;
       
-      // Show history and hide promotion banner
       if (historySection) historySection.style.display = 'block';
       if (historyPromoSection) historyPromoSection.style.display = 'none';
 
@@ -536,14 +664,11 @@ document.addEventListener('DOMContentLoaded', () => {
         titleLabel.innerText = `${state.catName}의 지난 건강 측정 내역 (최근 5회)`;
       }
 
-      // Save and render history for this specific ID
       saveHistory(totalScore, assessment.level, state.catId);
     } else {
-      // Guest mode: Hide profile on result card
       if (profileCard) profileCard.style.display = 'none';
       if (resultCatTitle) resultCatTitle.innerText = '';
       
-      // Hide history and show promo banner
       if (historySection) historySection.style.display = 'none';
       if (historyPromoSection) historyPromoSection.style.display = 'block';
     }
@@ -606,7 +731,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Skip first record since it is current
     history.slice(1).forEach(record => {
       const item = document.createElement('div');
       item.style.display = 'flex';
@@ -654,7 +778,6 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = TARGET_SIZE;
         
         const ctx = canvas.getContext('2d');
-        // Crop center of image to retain aspect ratio as circular thumbnail
         ctx.drawImage(
           img,
           (width - cropSize) / 2,
@@ -667,7 +790,6 @@ document.addEventListener('DOMContentLoaded', () => {
           TARGET_SIZE
         );
         
-        // Safe compression quality
         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
         callback(dataUrl);
       };
@@ -685,7 +807,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       attempts++;
     }
-    // Fallback if loop runs out (very rare)
     return '#' + Date.now().toString().slice(-6);
   }
 });

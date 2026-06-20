@@ -54,6 +54,9 @@
           <input type="text" id="login-id-input" placeholder="예: #111111 (숫자만 입력 가능)" maxlength="7" style="flex: 1; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
           <button id="btn-login-submit" class="btn btn-primary" style="width: auto; height: 48px; padding: 0 16px; font-size: 0.9rem; margin-top: 0; box-shadow: none;">로그인</button>
         </div>
+        <div style="text-align: right; margin-top: 10px;">
+          <button id="btn-go-to-find-id" style="background: none; border: none; color: var(--primary); font-size: 0.8rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 2px 4px;">🔑 ID를 잊으셨나요?</button>
+        </div>
       </div>
 
       <div class="main-info-card" style="margin-bottom: 24px;">
@@ -100,6 +103,9 @@
             <button type="button" id="btn-select-photo" class="btn btn-secondary" style="height: 40px; font-size: 0.85rem; padding: 0 16px; width: auto; font-weight: 700;">사진 선택</button>
             <input type="file" id="photo-file-input" accept="image/*" style="display: none;">
           </div>
+          <p style="font-size: 0.78rem; color: var(--critical); margin-top: 8px; font-weight: 700; line-height: 1.4;">
+            ⚠️ 사진을 등록하지 않아도 고유 ID 발급과 진단은 가능하나, 사진이 없으면 추후 고유 ID 분실 시 ID 찾기 기능 이용이 불가능합니다.
+          </p>
         </div>
       </div>
 
@@ -107,6 +113,62 @@
       <div class="nav-actions" style="margin-top: auto; padding-top: 20px;">
         <button id="btn-reg-back" class="btn btn-secondary" aria-label="메인 화면으로 돌아가기">이전</button>
         <button id="btn-reg-submit" class="btn btn-primary" aria-label="등록 완료 및 시작">등록 완료 및 시작</button>
+      </div>
+    </section>
+
+    <!-- 1.8. 고유 ID 찾기 화면 (Find ID Screen) -->
+    <section id="find-id-screen" class="screen">
+      <h2>고유 ID 찾기</h2>
+      <p class="subtitle">등록하신 정보를 입력하여 ID를 찾습니다.</p>
+
+      <div class="card" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+        <!-- 반려인 이름 입력 -->
+        <div class="input-group">
+          <label for="find-owner-name-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">👤 반려인 이름 또는 닉네임 (필수)</label>
+          <input type="text" id="find-owner-name-input" class="form-input" placeholder="예: 홍길동, 냥이집사" maxlength="10" style="width: 100%; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
+        </div>
+
+        <!-- 고양이 이름 입력 -->
+        <div class="input-group">
+          <label for="find-cat-name-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">🐱 고양이 이름 (필수)</label>
+          <input type="text" id="find-cat-name-input" class="form-input" placeholder="예: 나비, 치즈" maxlength="10" style="width: 100%; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
+        </div>
+
+        <!-- 대조용 고양이 사진 업로드 -->
+        <div class="input-group">
+          <label style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">📸 대조용 고양이 사진 등록 (필수)</label>
+          <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px;">
+            * 등록 시 업로드했던 고양이 사진을 다시 업로드해 주세요. 등록된 사진과 이미지 특징점(Feature Points)을 비교하여 동일 고양이인지 일치 여부를 판별합니다.
+          </p>
+          <div class="photo-upload-container" style="display: flex; align-items: center; gap: 16px;">
+            <div id="find-photo-preview-box" class="photo-preview-circle" style="width: 64px; height: 64px; border-radius: 50%; background-color: #E2E8F0; border: 2px solid var(--primary-light); display: flex; justify-content: center; align-items: center; overflow: hidden; background-size: cover; background-position: center;">
+              <span id="find-photo-preview-placeholder" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">사진</span>
+            </div>
+            <button type="button" id="btn-find-select-photo" class="btn btn-secondary" style="height: 40px; font-size: 0.85rem; padding: 0 16px; width: auto; font-weight: 700;">사진 선택</button>
+            <input type="file" id="find-photo-file-input" accept="image/*" style="display: none;">
+          </div>
+        </div>
+      </div>
+
+      <!-- 조회 중 로딩 상자 (시뮬레이션) -->
+      <div id="find-id-loading-box" class="card" style="display: none; align-items: center; justify-content: center; gap: 12px; padding: 24px; border-color: var(--primary);">
+        <span class="spinner" style="border-top-color: var(--primary); border-width: 3px; width: 24px; height: 24px;"></span>
+        <span style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark);" id="find-id-loading-text">고양이 특징점 분석 및 이미지 매칭 분석 중...</span>
+      </div>
+
+      <!-- 조회 결과 표시 상자 -->
+      <div id="find-id-result-box" class="card" style="display: none; flex-direction: column; gap: 12px; padding: 20px; border-color: var(--normal); background-color: var(--normal-light); text-align: left;">
+        <p id="find-id-match-notice" style="font-size: 0.85rem; font-weight: 700; color: var(--normal); line-height: 1.5;"></p>
+        <div style="display: flex; align-items: center; justify-content: space-between; background-color: var(--white); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(47, 133, 90, 0.2);">
+          <span id="found-id-display" style="font-size: 1.5rem; font-weight: 800; color: var(--normal); letter-spacing: 1px;">#111111</span>
+          <button id="btn-copy-found-id" class="btn btn-primary" style="width: auto; height: 36px; padding: 0 16px; font-size: 0.8rem; box-shadow: none; background-color: var(--normal); font-weight: 700;">ID 복사</button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="nav-actions" style="margin-top: auto; padding-top: 20px;">
+        <button id="btn-find-id-back" class="btn btn-secondary" aria-label="메인 화면으로 돌아가기">이전</button>
+        <button id="btn-find-id-submit" class="btn btn-primary" aria-label="ID 조회하기">ID 조회하기</button>
       </div>
     </section>
 
