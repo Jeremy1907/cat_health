@@ -1,0 +1,661 @@
+/*
+ * Cat Health Checker MVP Stylesheet
+ * Responsive mobile-first layout designed for a warm, veterinary-clinic feel.
+ */
+
+:root {
+  --primary: #FF7A59;
+  --primary-hover: #E26444;
+  --primary-light: #FFEDE9;
+  --bg-warm: #FFF8F4;
+  --text-dark: #2D3748;
+  --text-muted: #718096;
+  --white: #FFFFFF;
+  
+  --normal: #2F855A;
+  --normal-light: #E6FFFA;
+  --warn: #D69E2E;
+  --warn-light: #FEFCBF;
+  --danger: #DD6B20;
+  --danger-light: #FEEBC8;
+  --critical: #E53E3E;
+  --critical-light: #FED7D7;
+  
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reset & Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  background-color: #F7FAFC;
+  color: var(--text-dark);
+  line-height: 1.6;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+/* App Container (Mobile First Layout) */
+#app-container {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  background-color: var(--bg-warm);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Header & Progress Bar */
+header {
+  padding: 16px 20px;
+  background-color: var(--white);
+  border-bottom: 1px solid rgba(255, 122, 89, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+header .logo-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+header .logo-container img {
+  width: 32px;
+  height: 32px;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Progress indicator bar */
+.progress-bar-container {
+  width: 100%;
+  height: 4px;
+  background-color: var(--primary-light);
+  position: sticky;
+  top: 65px; /* header height estimate */
+  z-index: 99;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background-color: var(--primary);
+  transition: width 0.3s ease-in-out;
+}
+
+/* Screen Management (SPA Display) */
+.screen {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  padding: 24px 20px;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.screen.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Typography elements */
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 12px;
+  color: var(--text-dark);
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+/* Main Screen Specific */
+#main-screen {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+
+.hero-img-container {
+  margin-bottom: 30px;
+  width: 180px;
+  height: 180px;
+  background: var(--white);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: var(--shadow-md);
+  border: 4px solid var(--primary-light);
+}
+
+.hero-img-container img {
+  width: 130px;
+  height: 130px;
+}
+
+.main-desc {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.main-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.main-info-card {
+  background-color: var(--white);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 40px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(255,122,89,0.1);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+/* Card components & Interactive area */
+.card {
+  background-color: var(--white);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255, 122, 89, 0.1);
+  margin-bottom: 20px;
+}
+
+/* Checklist Screen Specific */
+.question-progress {
+  font-size: 0.85rem;
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.question-text {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.question-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+/* Answer option buttons */
+.options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-btn {
+  width: 100%;
+  height: 60px; /* Touch area requirement: 44px+ -> 60px satisfies */
+  padding: 0 20px;
+  border-radius: 16px;
+  border: 2px solid #E2E8F0;
+  background-color: var(--white);
+  color: var(--text-dark);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.option-btn:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.option-btn.selected {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.option-btn::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #CBD5E0;
+  display: inline-block;
+  transition: var(--transition);
+}
+
+.option-btn.selected::after {
+  border-color: var(--white);
+  background-color: var(--white);
+  background-image: radial-gradient(circle, var(--primary) 35%, transparent 40%);
+}
+
+/* Action Area for Checklist (Prev/Next buttons) */
+.nav-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+/* Common button designs */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px; /* User Request: 56px or higher */
+  border-radius: 16px;
+  border: none;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  gap: 8px;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(255, 122, 89, 0.3);
+  width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 122, 89, 0.4);
+}
+
+.btn-secondary {
+  background-color: #E2E8F0;
+  color: var(--text-dark);
+  width: 100%;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #CBD5E0;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Video Upload Screen */
+.upload-area {
+  border: 2px dashed rgba(255, 122, 89, 0.3);
+  background-color: var(--white);
+  border-radius: 20px;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-bottom: 20px;
+  min-height: 200px;
+}
+
+.upload-area:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.upload-icon {
+  width: 54px;
+  height: 54px;
+  margin-bottom: 16px;
+  color: var(--primary);
+}
+
+.upload-text {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.upload-subtext {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+#file-input {
+  display: none;
+}
+
+/* Video Preview Container */
+.preview-container {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.preview-container.active {
+  display: flex;
+}
+
+.preview-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+video {
+  width: 100%;
+  border-radius: 16px;
+  background-color: #000;
+  box-shadow: var(--shadow-md);
+  max-height: 240px;
+  object-fit: contain;
+}
+
+.video-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* Result Screen Specific */
+.result-card-container {
+  padding: 4px;
+}
+
+.result-card {
+  background-color: var(--bg-warm);
+  border-radius: 24px;
+  padding: 24px 20px;
+  border: 1px solid rgba(255, 122, 89, 0.15);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background-image: radial-gradient(circle at 100% 0%, var(--primary-light) 0%, transparent 40%);
+}
+
+.chart-wrapper {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+#chart-center-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#chart-center-text .score-num {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+#chart-center-text .score-total {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.risk-level-badge {
+  padding: 8px 20px;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+  display: inline-block;
+}
+
+.result-text-block {
+  text-align: center;
+  width: 100%;
+}
+
+.result-desc {
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  font-weight: 500;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.result-advice-card {
+  width: 100%;
+  padding: 16px;
+  border-radius: 16px;
+  background-color: var(--white);
+  border-left: 5px solid var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.result-advice-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.result-advice-content {
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  line-height: 1.4;
+}
+
+/* History / Local Data warning in Result */
+.result-footer-info {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* Action button area for Results */
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+/* Status colors classes for badges or specific text */
+.risk-normal { color: var(--normal); background-color: var(--normal-light); }
+.risk-warn { color: var(--warn); background-color: var(--warn-light); }
+.risk-danger { color: var(--danger); background-color: var(--danger-light); }
+.risk-critical { color: var(--critical); background-color: var(--critical-light); }
+
+/* Custom loading spinner */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(255,255,255,.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Utilities */
+.text-center { text-align: center; }
+.mt-4 { margin-top: 16px; }
+.mb-4 { margin-bottom: 16px; }
+
+/* Custom styles for Cat name input & Promotion card */
+#cat-name-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-light) !important;
+}
+
+.promo-card {
+  animation: pulsePromo 3s ease-in-out infinite;
+}
+
+@keyframes pulsePromo {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.01);
+  }
+}
+
+/* Modal Overlay Design */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  padding: 20px;
+  animation: modalFadeIn 0.3s ease-out forwards;
+}
+
+.modal-card {
+  background-color: var(--white);
+  width: 100%;
+  max-width: 400px;
+  border-radius: 24px;
+  padding: 28px 24px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 122, 89, 0.15);
+  text-align: center;
+  animation: modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.modal-header {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+
+.issued-id-box {
+  background-color: var(--primary-light);
+  border: 2px dashed var(--primary);
+  color: var(--primary);
+  font-size: 1.8rem;
+  font-weight: 800;
+  padding: 12px;
+  border-radius: 16px;
+  margin: 16px 0;
+  letter-spacing: 2px;
+  user-select: all;
+}
+
+/* Registration Form styles */
+.form-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: 600;
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Modal animations */
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
