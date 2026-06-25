@@ -25,7 +25,6 @@
 <body>
 
   <div id="app-container">
-    <!-- Header -->
     <header>
       <div class="logo-container">
         <img id="app-logo" src="assets/logo.svg" alt="Cat Health Checker Logo">
@@ -38,291 +37,224 @@
       <div id="progress-bar" class="progress-bar"></div>
     </div>
 
-    <!-- 1. 메인 화면 (Main Screen) -->
+      <!-- 1. 메인 화면 (Main Screen) -->
     <main id="main-screen" class="screen active">
-      <div class="hero-img-container">
-        <img src="assets/logo.svg" alt="Cat Hero Illustration">
-      </div>
-      <p class="main-desc">우리 고양이, 병원에 가야 할까요?</p>
-      <h2 class="main-title">Cat Health Checker</h2>
-      <p class="subtitle">간단한 행동 체크리스트와 영상 분석을 통해<br>병원 방문 필요성을 과학적으로 자가 진단하세요.</p>
-      
-      <!-- ID Login Form -->
-      <div class="card" style="width: 100%; text-align: left; padding: 18px; margin-bottom: 20px;">
-        <label for="login-id-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">🔑 등록 ID로 간편 로그인</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="login-id-input" placeholder="예: #111111 (숫자만 입력 가능)" maxlength="7" style="flex: 1; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
-          <button id="btn-login-submit" class="btn btn-primary" style="width: auto; height: 48px; padding: 0 16px; font-size: 0.9rem; margin-top: 0; box-shadow: none;">로그인</button>
-        </div>
-        <div style="text-align: right; margin-top: 10px;">
-          <button id="btn-go-to-find-id" style="background: none; border: none; color: var(--primary); font-size: 0.8rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 2px 4px;">🔑 ID를 잊으셨나요?</button>
-        </div>
-      </div>
+      <div class="screen-split-container">
+        <div class="screen-left">
+          <p class="main-desc">우리 고양이, 병원에 가야 할까요?</p>
+          <h2 class="main-title">Cat Health Checker</h2>
+          <p class="subtitle">간단한 행동 체크리스트로 병원 방문 필요성을 자가 진단하세요.</p>
 
-      <div class="main-info-card" style="margin-bottom: 24px;">
-        <p>🐾 소요 시간: 약 3분</p>
-        <p>📹 준비물: 10초 이내의 고양이 움직임 영상</p>
-        <p style="margin-top: 6px; font-size: 0.8rem; color: var(--primary);">* 입력하신 모든 데이터 및 영상은 서버에 저장되지 않고 개인 PC 브라우저 내에서만 안전하게 처리됩니다.</p>
-      </div>
+          <div class="main-info-card" style="margin-bottom: 24px;">
+            <p>🐾 소요 시간: 약 3분</p>
+            <p>📸 준비물: 현재 고양이 사진 1~4장 (선택사항)</p>
+            <p style="margin-top: 6px; font-size: 0.8rem; color: var(--primary);">* 입력하신 모든 데이터 및 사진은 서버에 저장되지 않고 개인 PC 브라우저 내에서만 안전하게 처리됩니다.</p>
+          </div>
 
-      <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
-        <button id="btn-go-to-reg" class="btn btn-primary" aria-label="신규 고양이 등록 후 시작">
-          신규 고양이 등록 후 시작
-        </button>
-        <button id="btn-start-no-reg" class="btn btn-secondary" style="border: 2px solid #CBD5E0;" aria-label="등록 없이 바로 시작">
-          등록 없이 바로 시작
-        </button>
+          <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <button id="btn-start" class="btn btn-primary" style="max-width: 400px;" aria-label="자가 진단 시작하기">
+              자가 진단 시작하기
+            </button>
+            
+            <!-- History section (max 5) -->
+            <div id="history-section" style="width: 100%; max-width: 400px; margin-top: 16px; display: none;">
+              <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px; text-align: left; display: flex; align-items: center; gap: 6px;">
+                📂 최근 진단 내역 (최대 5개)
+              </h4>
+              <div id="history-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
-    <!-- 1.5. 고양이 등록 화면 (Registration Screen) -->
-    <section id="registration-screen" class="screen">
-      <h2>고양이 정보 등록</h2>
-      <p class="subtitle">반려인과 고양이의 정보를 입력해 주세요. (사진은 선택)</p>
 
-      <div class="card" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
-        <!-- 반려인 이름 입력 -->
-        <div class="input-group">
-          <label for="owner-name-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">👤 반려인 이름 또는 닉네임 (필수)</label>
-          <input type="text" id="owner-name-input" class="form-input" placeholder="예: 홍길동, 냥이집사" maxlength="10" style="width: 100%; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
-        </div>
-
-        <!-- 고양이 이름 입력 -->
-        <div class="input-group">
-          <label for="reg-cat-name-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">🐱 고양이 이름 (필수)</label>
-          <input type="text" id="reg-cat-name-input" class="form-input" placeholder="예: 나비, 치즈" maxlength="10" style="width: 100%; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
-        </div>
-
-        <!-- 고양이 사진 업로드 -->
-        <div class="input-group">
-          <label style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">📸 고양이 사진 등록 (선택)</label>
-          <div class="photo-upload-container" style="display: flex; align-items: center; gap: 16px;">
-            <div id="photo-preview-box" class="photo-preview-circle" style="width: 64px; height: 64px; border-radius: 50%; background-color: #E2E8F0; border: 2px solid var(--primary-light); display: flex; justify-content: center; align-items: center; overflow: hidden; background-size: cover; background-position: center;">
-              <span id="photo-preview-placeholder" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">사진</span>
-            </div>
-            <button type="button" id="btn-select-photo" class="btn btn-secondary" style="height: 40px; font-size: 0.85rem; padding: 0 16px; width: auto; font-weight: 700;">사진 선택</button>
-            <input type="file" id="photo-file-input" accept="image/*" style="display: none;">
-          </div>
-          <p style="font-size: 0.78rem; color: var(--critical); margin-top: 8px; font-weight: 700; line-height: 1.4;">
-            ⚠️ 사진을 등록하지 않아도 고유 ID 발급과 진단은 가능하나, 사진이 없으면 추후 고유 ID 분실 시 ID 찾기 기능 이용이 불가능합니다.
-          </p>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="nav-actions" style="margin-top: auto; padding-top: 20px;">
-        <button id="btn-reg-back" class="btn btn-secondary" aria-label="메인 화면으로 돌아가기">이전</button>
-        <button id="btn-reg-submit" class="btn btn-primary" aria-label="등록 완료 및 시작">등록 완료 및 시작</button>
-      </div>
-    </section>
-
-    <!-- 1.8. 고유 ID 찾기 화면 (Find ID Screen) -->
-    <section id="find-id-screen" class="screen">
-      <h2>고유 ID 찾기</h2>
-      <p class="subtitle">등록하신 정보를 입력하여 ID를 찾습니다.</p>
-
-      <div class="card" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
-        <!-- 반려인 이름 입력 -->
-        <div class="input-group">
-          <label for="find-owner-name-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">👤 반려인 이름 또는 닉네임 (필수)</label>
-          <input type="text" id="find-owner-name-input" class="form-input" placeholder="예: 홍길동, 냥이집사" maxlength="10" style="width: 100%; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
-        </div>
-
-        <!-- 고양이 이름 입력 -->
-        <div class="input-group">
-          <label for="find-cat-name-input" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">🐱 고양이 이름 (필수)</label>
-          <input type="text" id="find-cat-name-input" class="form-input" placeholder="예: 나비, 치즈" maxlength="10" style="width: 100%; height: 48px; padding: 0 16px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.95rem; font-family: inherit; font-weight: 600; outline: none; transition: var(--transition);">
-        </div>
-
-        <!-- 대조용 고양이 사진 업로드 -->
-        <div class="input-group">
-          <label style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">📸 대조용 고양이 사진 등록 (필수)</label>
-          <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px;">
-            * 등록 시 업로드했던 고양이 사진을 다시 업로드해 주세요. 등록된 사진과 이미지 특징점(Feature Points)을 비교하여 동일 고양이인지 일치 여부를 판별합니다.
-          </p>
-          <div class="photo-upload-container" style="display: flex; align-items: center; gap: 16px;">
-            <div id="find-photo-preview-box" class="photo-preview-circle" style="width: 64px; height: 64px; border-radius: 50%; background-color: #E2E8F0; border: 2px solid var(--primary-light); display: flex; justify-content: center; align-items: center; overflow: hidden; background-size: cover; background-position: center;">
-              <span id="find-photo-preview-placeholder" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">사진</span>
-            </div>
-            <button type="button" id="btn-find-select-photo" class="btn btn-secondary" style="height: 40px; font-size: 0.85rem; padding: 0 16px; width: auto; font-weight: 700;">사진 선택</button>
-            <input type="file" id="find-photo-file-input" accept="image/*" style="display: none;">
-          </div>
-        </div>
-      </div>
-
-      <!-- 조회 중 로딩 상자 (시뮬레이션) -->
-      <div id="find-id-loading-box" class="card" style="display: none; align-items: center; justify-content: center; gap: 12px; padding: 24px; border-color: var(--primary);">
-        <span class="spinner" style="border-top-color: var(--primary); border-width: 3px; width: 24px; height: 24px;"></span>
-        <span style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark);" id="find-id-loading-text">고양이 특징점 분석 및 이미지 매칭 분석 중...</span>
-      </div>
-
-      <!-- 조회 결과 표시 상자 -->
-      <div id="find-id-result-box" class="card" style="display: none; flex-direction: column; gap: 12px; padding: 20px; border-color: var(--normal); background-color: var(--normal-light); text-align: left;">
-        <p id="find-id-match-notice" style="font-size: 0.85rem; font-weight: 700; color: var(--normal); line-height: 1.5;"></p>
-        <div style="display: flex; align-items: center; justify-content: space-between; background-color: var(--white); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(47, 133, 90, 0.2);">
-          <span id="found-id-display" style="font-size: 1.5rem; font-weight: 800; color: var(--normal); letter-spacing: 1px;">#111111</span>
-          <button id="btn-copy-found-id" class="btn btn-primary" style="width: auto; height: 36px; padding: 0 16px; font-size: 0.8rem; box-shadow: none; background-color: var(--normal); font-weight: 700;">ID 복사</button>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="nav-actions" style="margin-top: auto; padding-top: 20px;">
-        <button id="btn-find-id-back" class="btn btn-secondary" aria-label="메인 화면으로 돌아가기">이전</button>
-        <button id="btn-find-id-submit" class="btn btn-primary" aria-label="ID 조회하기">ID 조회하기</button>
-      </div>
-    </section>
 
     <!-- 2. 체크리스트 화면 (Checklist Screen) -->
     <section id="checklist-screen" class="screen">
-      <div class="card">
-        <div id="q-progress" class="question-progress">질문 1 / 10</div>
-        <h2 id="q-text" class="question-text">최근 식사량이 줄었나요?</h2>
-        <p id="q-desc" class="question-desc">평소 대비 사료 섭취량이나 식사 태도 변화</p>
-        
-        <div id="options-wrapper" class="options-container">
-          <!-- Options will be rendered dynamically by app.js -->
-        </div>
-      </div>
+      <div class="screen-split-container">
+        <div class="screen-left">
+          <div class="card card-question">
+            <div id="q-progress" class="question-progress">질문 1 / 10</div>
+            <h2 id="q-text" class="question-text">최근 식사량이 줄었나요?</h2>
+            <div id="q-catpoint-container" class="q-catpoint-container">
+              <span class="q-catpoint-label">🐾 고양이 포인트</span>
+              <p id="q-catpoint" class="q-catpoint-text"></p>
+            </div>
+          </div>
 
-      <!-- Checklist Navigation Action Buttons -->
-      <div class="nav-actions">
-        <button id="btn-prev" class="btn btn-secondary" aria-label="이전 질문">이전</button>
-        <button id="btn-next" class="btn btn-primary" disabled aria-label="다음 질문">다음</button>
+          <!-- Checklist Navigation Action Buttons -->
+          <div class="nav-actions">
+            <button id="btn-prev" class="btn btn-secondary" aria-label="이전 질문">이전</button>
+            <button id="btn-next" class="btn btn-primary" disabled aria-label="다음 질문">다음</button>
+          </div>
+        </div>
+        <div class="screen-right">
+          <div id="options-wrapper" class="options-container">
+            <!-- Options will be rendered dynamically by app.js -->
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- 3. 영상 업로드 & 미리보기 화면 (Upload Screen) -->
     <section id="upload-screen" class="screen">
-      <h2>행동 분석 영상 업로드</h2>
-      <p class="subtitle">고양이의 움직임, 걸음걸이 또는 이상 행동이 담긴 짧은 영상을 등록해 주세요. (+5점 가산)</p>
-
-      <div class="card">
-        <!-- Drag & Drop Upload Zone -->
-        <div id="upload-area" class="upload-area">
-          <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-          </svg>
-          <div class="upload-text">영상을 드래그하거나 클릭하여 업로드</div>
-          <div class="upload-subtext">최대 10초 이내 • 파일 크기 50MB 제한<br>MP4, MOV, WEBM 등의 비디오 형식</div>
-          <input type="file" id="file-input" accept="video/*">
+      <div class="screen-split-container">
+        <div class="screen-left">
+          <h2>현재 고양이 모습 등록</h2>
+          <p class="subtitle">설문만으로는 담지 못한 고양이의 모습이 있나요? 병원 진료에 도움이 될 수 있도록 고양이의 현재 사진을 최대 4장까지 등록해 보세요. (권장)</p>
+          <!-- Action Buttons -->
+          <div class="nav-actions" style="margin-top: auto; padding-top: 24px;">
+            <button id="btn-upload-prev" class="btn btn-secondary" aria-label="이전 단계로 이동">이전</button>
+            <button id="btn-submit" class="btn btn-secondary" aria-label="건강 분석 결과 보기">
+              <span style="text-align: center; line-height: 1.3;">건강 분석 결과 보기<br><span style="font-size: 0.85rem; font-weight: 600; opacity: 0.9;">(사진 없이 진행)</span></span>
+            </button>
+          </div>
         </div>
+        
+        <div class="screen-right">
+          <div class="card">
+            <!-- Drag & Drop Upload Zone -->
+            <div id="upload-area" class="upload-area">
+              <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <div class="upload-text">사진을 드래그하거나 클릭하여 업로드</div>
+              <div class="upload-subtext">최대 4장 • 파일당 10MB 제한<br>JPG, PNG, WEBP, GIF 이미지 형식</div>
+              <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+            </div>
 
-        <!-- Video Preview Area -->
-        <div id="preview-container" class="preview-container">
-          <div class="preview-title">📹 업로드 영상 미리보기</div>
-          <video id="preview-video" controls></video>
-          <div class="video-info">
-            <span id="video-name">filename.mp4</span>
-            <span id="video-size">0.00 MB</span>
+            <!-- Image Preview Grid -->
+            <div id="preview-container" class="preview-container">
+              <div class="preview-title">📸 업로드된 고양이 사진 (<span id="upload-count">0</span>/4)</div>
+              <div id="image-preview-grid" class="image-preview-grid"></div>
+            </div>
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Action Buttons -->
-      <div class="nav-actions" style="margin-top: auto;">
-        <button id="btn-upload-prev" class="btn btn-secondary" aria-label="이전 단계로 이동">이전</button>
-        <button id="btn-submit" class="btn btn-secondary" aria-label="건강 분석 결과 보기">
-          건강 분석 결과 보기 (영상 없이 진행)
-        </button>
+    <!-- 3.5. AI 매칭 로딩 화면 (AI Matching Screen) -->
+    <section id="loading-screen" class="screen">
+      <div class="loading-content">
+        <div class="matching-animation">
+          <div class="spinner-outer"></div>
+          <div class="spinner-inner"></div>
+          <img class="loading-cat-icon" src="assets/logo.svg" alt="Analyzing...">
+        </div>
+        <h2 class="loading-title">AI가 고양이의 행동 패턴 매칭 중...</h2>
+        <p class="loading-subtitle">작성해주신 10가지 행동 패턴을 바탕으로<br>수의학 가이드라인 기반 자가 진단을 수행하고 있습니다.</p>
+        
+        <div class="progress-track">
+          <div id="loading-progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="loading-status-text">분석 진행률 <span id="loading-percent">0</span>%</div>
       </div>
     </section>
 
     <!-- 4. 결과 리포트 화면 (Result Screen) -->
     <section id="result-screen" class="screen">
-      <h2><span id="result-cat-name-title"></span> 건강 분석 리포트</h2>
-      <p class="subtitle">체크리스트 결과와 영상 가중치를 종합한 보고서입니다.</p>
+      <div class="screen-split-container">
+        <div class="screen-left">
+          <div class="warning-banner" style="background-color: var(--danger-light); color: var(--danger); padding: 14px 20px; border-radius: 16px; font-weight: 700; margin-bottom: 24px; font-size: 0.95rem; text-align: center; border: 1px solid rgba(229, 62, 62, 0.2); width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            ⚠️ 증상이 지속될 경우 반드시 전문 동물병원을 방문하여 수의사의 진료를 받으십시오.
+          </div>
+        </div>
+        
+        <div class="screen-right">
+          <!-- 캡처 타겟이 되는 카드 영역 (영수증 콘셉트) -->
+          <div class="result-card-container">
+            <div id="result-card" class="result-card receipt-card">
+              <!-- Receipt Header -->
+              <div class="receipt-header">
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-dark); margin-bottom: 12px; text-align: center; width: 100%; word-break: keep-all;">고양이 간이 진단 리포트</h3>
+                <div class="receipt-meta-grid">
+                  <span class="meta-label">진단 일시</span>
+                  <div class="meta-value-container" style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                    <span id="receipt-date" class="meta-value" style="margin-right: 0;">2026-06-22 21:52:58</span>
+                    <button id="btn-save-current" class="btn-small-save" title="진단 결과 저장">
+                      💾 저장
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="receipt-divider-dashed"></div>
+              
+              <!-- Symptoms Summary Section -->
+              <div class="receipt-section">
+                <div class="receipt-section-title">📋 관찰된 행동 증상 요약</div>
+                <div id="receipt-symptoms-list" class="receipt-symptoms-list">
+                  <!-- Generated dynamically in JS -->
+                  <div class="symptom-item empty-symptoms">발견된 이상 징후 없음</div>
+                </div>
+              </div>
+              
+              <div class="receipt-divider-dashed"></div>
+              
+              <!-- Scoring Section & Cat Points combined -->
+              <div class="receipt-section receipt-score-section">
+                <div class="receipt-section-title">📊 종합 건강 지표</div>
+                
+                <!-- Cat Status Image & Message aligned horizontally -->
+                <div class="receipt-status-container" style="display: flex; align-items: center; gap: 16px; width: 100%; margin-top: 8px; margin-bottom: 8px;">
+                  <div class="status-img-wrapper" style="width: 100px; height: 100px; flex-shrink: 0; background-color: #F7FAFC; border-radius: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: var(--shadow-sm);">
+                    <img id="result-cat-img" src="assets/cat_status_1.png" alt="고양이 상태" style="width: 100%; height: 100%; object-fit: cover;">
+                  </div>
+                  <div style="flex: 1; text-align: left;">
+                    <p id="result-summary-desc" class="result-desc" style="font-weight: 700; font-size: 0.95rem; margin: 0; word-break: keep-all; line-height: 1.5; color: var(--text-dark);"></p>
+                  </div>
+                </div>
+                
+                <div class="result-text-block" style="width: 100%;">
+                  <!-- Cat Points List -->
+                  <div id="receipt-catpoints-list" class="receipt-catpoints-list" style="margin-top: 10px;">
+                    <!-- Generated dynamically in JS -->
+                  </div>
+                </div>
+              </div>
+              
 
-      <!-- 캡처 타겟이 되는 카드 영역 -->
-      <div class="result-card-container">
-        <div id="result-card" class="result-card">
-          <!-- Profile Badge (Photo + Name + ID) -->
-          <div id="result-profile-card" class="result-profile-card" style="display: none; align-items: center; gap: 12px; background-color: var(--white); padding: 12px 18px; border-radius: 16px; width: 100%; border: 1px solid rgba(255, 122, 89, 0.1); box-shadow: var(--shadow-sm);">
-            <div id="result-profile-img" class="profile-img-circle" style="width: 50px; height: 50px; border-radius: 50%; background-color: #E2E8F0; background-size: cover; background-position: center; border: 2px solid var(--primary-light);"></div>
-            <div class="profile-text-info" style="display: flex; flex-direction: column; text-align: left;">
-              <span id="result-profile-name" class="profile-name" style="font-size: 1rem; font-weight: 800; color: var(--text-dark);">초코</span>
-              <span id="result-profile-owner" class="profile-owner" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">반려인: 홍길동</span>
-              <span id="result-profile-id" class="profile-id" style="font-size: 0.75rem; color: var(--primary); font-weight: 700;">등록 ID: #111111</span>
+              
+              <div id="receipt-images-divider" class="receipt-divider-dashed" style="display: none;"></div>
+
+              <!-- Uploaded Cat Photos Section (Inside Receipt) -->
+              <div id="receipt-images-section" class="receipt-section" style="display: none;">
+                <div class="receipt-section-title">📸 등록된 고양이 모습</div>
+                <div id="receipt-images-grid" class="receipt-images-grid">
+                  <!-- Photos dynamically loaded here -->
+                </div>
+              </div>
+
+              <div class="receipt-divider-dashed"></div>
+              
+              <!-- Footer -->
+              <div class="receipt-footer">
+              </div>
             </div>
           </div>
 
-          <!-- Donut Chart Wrapper -->
-          <div class="chart-wrapper">
-            <canvas id="result-chart"></canvas>
-            <div id="chart-center-text">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- Risk Level Badge -->
-          <div id="risk-badge" class="risk-level-badge risk-normal">정상 범위</div>
-
-          <!-- Detailed Result Text -->
-          <div class="result-text-block">
-            <p id="result-summary-desc" class="result-desc">현재 이상 행동이 식별되지 않았습니다.</p>
-            <p id="video-score-notice" style="font-size:0.78rem;color:var(--text-muted);display:none;"></p>
-          </div>
-
-          <!-- Professional Advice Card -->
-          <div class="result-advice-card">
-            <div class="result-advice-title">권장 행동 가이드</div>
-            <p id="result-advice-content" class="result-advice-content">정기적인 놀이와 급수량 관리를 유지하여 건강을 지켜주세요.</p>
-          </div>
-          
-          <div class="result-footer-info">
-            * 본 진단은 간이 분석이므로 증상이 지속될 경우 반드시 전문 동물병원을 방문하십시오.
+          <!-- Sharing and Storage Actions -->
+          <div class="result-actions">
+            <button id="btn-save-image" class="btn btn-primary" aria-label="결과 이미지 파일 저장">
+              💾 결과 이미지 저장
+            </button>
+            <button id="btn-restart" class="btn btn-secondary" aria-label="처음부터 다시 진단하기">
+              처음부터 다시 하기
+            </button>
           </div>
         </div>
-      </div>
-
-      <!-- Recent Diagnostics History (Conditional) -->
-      <div id="history-section" class="card mt-4" style="padding: 16px; display: none;">
-        <h3 id="history-title-label" style="font-size:0.95rem;font-weight:700;margin-bottom:12px;color:var(--text-dark);border-left:3px solid var(--primary);padding-left:8px;">
-          지난 건강 측정 내역 (최근 5회)
-        </h3>
-        <div id="history-list">
-          <!-- Previous history records list -->
-        </div>
-      </div>
-
-      <!-- Promotion for Cat Registration -->
-      <div id="history-promo-section" class="card mt-4" style="padding: 20px; display: none; text-align: center; border: 1px dashed var(--primary); background-color: var(--primary-light); border-radius: 16px;">
-        <p style="font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 6px;">💡 고양이 등록 혜택 안내</p>
-        <p style="font-size: 0.85rem; color: var(--text-dark); line-height: 1.5;">첫 화면에서 고양이 이름을 등록하고 분석을 시작하시면, 이곳에서 최근 5회 측정 기록을 누적하여 비교해 볼 수 있습니다.</p>
-      </div>
-
-      <!-- Sharing and Storage Actions -->
-      <div class="result-actions">
-        <button id="btn-save-image" class="btn btn-primary" aria-label="결과 이미지 파일 저장">
-          💾 결과 이미지 저장
-        </button>
-        <button id="btn-share" class="btn btn-secondary" style="border: 2px solid var(--primary); color: var(--primary); background: transparent;" aria-label="결과 SNS 공유하기">
-          📤 결과 공유하기
-        </button>
-        <button id="btn-restart" class="btn btn-secondary" aria-label="처음부터 다시 진단하기">
-          처음부터 다시 하기
-        </button>
       </div>
     </section>
   </div>
 
-  <!-- 고유 ID 발급 완료 모달 -->
-  <div id="id-modal-overlay" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
-      <div class="modal-header">🎉 고양이 등록 완료!</div>
-      <div class="modal-body">
-        <p class="modal-desc-main" style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">고양이 고유 진단 ID가 발급되었습니다.</p>
-        <div id="issued-id-display" class="issued-id-box">#111111</div>
-        <p class="modal-desc-sub" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-top: 12px;">이 ID를 캡처하거나 복사해 두시면, 다음 접속 시 첫 화면에서 간편하게 로그인하여 지난 건강 측정 내역을 이어서 볼 수 있습니다.</p>
-      </div>
-      <div class="modal-footer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; width: 100%;">
-        <button id="btn-copy-id" class="btn btn-secondary" style="height: 48px; font-size: 0.95rem; width: 100%;">ID 복사하기</button>
-        <button id="btn-modal-close" class="btn btn-primary" style="height: 48px; font-size: 0.95rem; width: 100%;">분석 시작하기</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Javascript Modules (Loaded in sequence to prevent dependencies resolution issue) -->
   <script src="js/questions.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/scoring.js"></script>
   <script src="js/result.js"></script>
   <script src="js/app.js"></script>

@@ -1,21 +1,15 @@
 /**
  * Cat Health Checker MVP Main Application Logic
- * Integrates unique IDs, member registration, canvas image compression, ID retrieval with mock AI image matching.
+ * Direct self-diagnosis flow without login or cat registration features.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   // Application State
   const state = {
     currentScreen: 'main-screen',
-    catId: null,      // 발급받은 고유 ID (#123456 형식)
-    catName: null,    // 고양이 이름
-    ownerName: null,  // 반려인 이름
-    catPhoto: null,   // 압축된 고양이 사진 (Base64 Data URL)
-    findCatPhoto: null, // ID 찾기 시 업로드한 임시 사진 Base64
     answers: Array(10).fill(null), // 10 questions, values: 0/1/2
     currentQuestionIndex: 0,
-    isVideoUploaded: false,
-    videoFile: null,
+    uploadedImages: [], // array of { file, objectUrl }
     totalScore: 0,
     riskAssessment: null
   };
@@ -23,10 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const screens = {
     main: document.getElementById('main-screen'),
-    registration: document.getElementById('registration-screen'),
-    findId: document.getElementById('find-id-screen'),
     checklist: document.getElementById('checklist-screen'),
     upload: document.getElementById('upload-screen'),
+    loading: document.getElementById('loading-screen'),
     result: document.getElementById('result-screen')
   };
 
@@ -34,450 +27,216 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
   
-  // Video Elements
+  // File Upload Elements
   const fileInput = document.getElementById('file-input');
   const uploadArea = document.getElementById('upload-area');
   const previewContainer = document.getElementById('preview-container');
-  const previewVideo = document.getElementById('preview-video');
-  const videoNameText = document.getElementById('video-name');
-  const videoSizeText = document.getElementById('video-size');
   const btnSubmit = document.getElementById('btn-submit');
   
-  // Registration & Login Elements
-  const loginIdInput = document.getElementById('login-id-input');
-  const btnLoginSubmit = document.getElementById('btn-login-submit');
-  const btnGoToFindId = document.getElementById('btn-go-to-find-id');
-  
-  const ownerNameInput = document.getElementById('owner-name-input');
-  const regCatNameInput = document.getElementById('reg-cat-name-input');
-  const btnSelectPhoto = document.getElementById('btn-select-photo');
-  const photoFileInput = document.getElementById('photo-file-input');
-  const photoPreviewBox = document.getElementById('photo-preview-box');
-  const photoPlaceholder = document.getElementById('photo-preview-placeholder');
-  const btnRegSubmit = document.getElementById('btn-reg-submit');
-  
-  // Find ID Elements
-  const findOwnerNameInput = document.getElementById('find-owner-name-input');
-  const findCatNameInput = document.getElementById('find-cat-name-input');
-  const btnFindSelectPhoto = document.getElementById('btn-find-select-photo');
-  const findPhotoFileInput = document.getElementById('find-photo-file-input');
-  const findPhotoPreviewBox = document.getElementById('find-photo-preview-box');
-  const findPhotoPlaceholder = document.getElementById('find-photo-preview-placeholder');
-  const btnFindIdSubmit = document.getElementById('btn-find-id-submit');
-  const findIdLoadingBox = document.getElementById('find-id-loading-box');
-  const findIdResultBox = document.getElementById('find-id-result-box');
-  const findIdMatchNotice = document.getElementById('find-id-match-notice');
-  const foundIdDisplay = document.getElementById('found-id-display');
-  const btnCopyFoundId = document.getElementById('btn-copy-found-id');
-
-  // Modal Elements
-  const idModalOverlay = document.getElementById('id-modal-overlay');
-  const issuedIdDisplay = document.getElementById('issued-id-display');
-  const btnCopyId = document.getElementById('btn-copy-id');
-  const btnModalClose = document.getElementById('btn-modal-close');
+  // Start Button
+  const btnStart = document.getElementById('btn-start');
 
   // Initialize App
   init();
 
   function init() {
     setupEventListeners();
+    renderHistoryList();
     showScreen('main-screen');
   }
 
   // Setup Global Event Listeners
   function setupEventListeners() {
-    // 1) Go to Registration Screen
-    document.getElementById('btn-go-to-reg').addEventListener('click', () => {
-      resetState();
-      showScreen('registration-screen');
-    });
-
-    // 2) Go back from Registration Screen
-    document.getElementById('btn-reg-back').addEventListener('click', () => {
-      showScreen('main-screen');
-    });
-
-    // 2.5) Go to Find ID Screen
-    btnGoToFindId.addEventListener('click', () => {
-      resetState();
-      showScreen('find-id-screen');
-    });
-
-    // 2.6) Go back from Find ID Screen
-    document.getElementById('btn-find-id-back').addEventListener('click', () => {
-      showScreen('main-screen');
-    });
-
-    // 3) Photo Selector Event (Registration)
-    btnSelectPhoto.addEventListener('click', () => photoFileInput.click());
-    photoFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        if (!file.type.startsWith('image/')) {
-          alert('이미지 파일만 선택할 수 있습니다.');
-          return;
-        }
-        compressImage(file, (base64Url) => {
-          state.catPhoto = base64Url;
-          photoPreviewBox.style.backgroundImage = `url(${base64Url})`;
-          photoPlaceholder.style.display = 'none';
-        });
-      }
-    });
-
-    // 3.5) Photo Selector Event (Find ID)
-    btnFindSelectPhoto.addEventListener('click', () => findPhotoFileInput.click());
-    findPhotoFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        if (!file.type.startsWith('image/')) {
-          alert('이미지 파일만 선택할 수 있습니다.');
-          return;
-        }
-        compressImage(file, (base64Url) => {
-          state.findCatPhoto = base64Url;
-          findPhotoPreviewBox.style.backgroundImage = `url(${base64Url})`;
-          findPhotoPlaceholder.style.display = 'none';
-        });
-      }
-    });
-
-    // 4) Registration Form Submission
-    btnRegSubmit.addEventListener('click', () => {
-      const ownerVal = ownerNameInput.value.trim();
-      const catVal = regCatNameInput.value.trim();
-
-      if (!ownerVal || !catVal) {
-        alert("반려인 이름과 고양이 이름은 필수 항목입니다!");
-        return;
-      }
-
-      // 사진 미등록 시 최종 확인 컨펌 창 팝업
-      if (!state.catPhoto) {
-        const confirmStart = confirm("고양이 사진 등록 없이 분석을 시작하시겠습니까?\n\n※ 사진이 등록되지 않으면 추후 고유 ID를 분실했을 때 ID 찾기 기능 이용이 완전히 불가능합니다.");
-        if (!confirmStart) {
-          return; // 취소 클릭 시 등록 화면 유지
-        }
-      }
-
-      // Generate unique ID
-      const newId = generateUniqueId();
-      state.catId = newId;
-      state.catName = catVal;
-      state.ownerName = ownerVal;
-
-      // Save Profile in LocalStorage
-      const profile = {
-        id: newId,
-        catName: catVal,
-        ownerName: ownerVal,
-        catPhoto: state.catPhoto
-      };
-
-      try {
-        localStorage.setItem(`cat_profile_${newId}`, JSON.stringify(profile));
-        
-        // Show Issued ID Modal
-        issuedIdDisplay.innerText = newId;
-        idModalOverlay.style.display = 'flex';
-      } catch (err) {
-        console.error("고양이 등록 실패:", err);
-        alert("브라우저 저장 공간이 가득 찼습니다. 캐시를 지우거나 다른 이미지를 등록해 주세요.");
-      }
-    });
-
-    // 4.5) Find ID Form Submission (With mock AI face matching)
-    btnFindIdSubmit.addEventListener('click', () => {
-      const findOwner = findOwnerNameInput.value.trim();
-      const findCat = findCatNameInput.value.trim();
-
-      if (!findOwner || !findCat) {
-        alert("반려인 이름과 고양이 이름을 모두 입력해 주세요!");
-        return;
-      }
-
-      if (!state.findCatPhoto) {
-        alert("고양이 대조를 위해 사진 등록을 완료해 주세요!");
-        return;
-      }
-
-      // Search matching profile in LocalStorage
-      let foundProfile = null;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith('cat_profile_')) {
-          try {
-            const profile = JSON.parse(localStorage.getItem(key));
-            if (profile.ownerName === findOwner && profile.catName === findCat) {
-              foundProfile = profile;
-              break;
-            }
-          } catch (e) {
-            // Ignore corrupted keys
-          }
-        }
-      }
-
-      if (!foundProfile) {
-        findIdResultBox.style.display = 'none';
-        alert("일치하는 고양이 등록 정보를 찾을 수 없습니다. 이름과 닉네임을 확인해 주세요.");
-        return;
-      }
-
-      // Hide result box and show loader animation for simulation
-      findIdResultBox.style.display = 'none';
-      findIdLoadingBox.style.display = 'flex';
-      btnFindIdSubmit.disabled = true;
-
-      // Simulate 2 seconds AI features extraction delay
-      setTimeout(() => {
-        findIdLoadingBox.style.display = 'none';
-        btnFindIdSubmit.disabled = false;
-
-        // Render Found result
-        if (foundProfile.catPhoto) {
-          // Both photos exist, mock AI success matching
-          findIdMatchNotice.innerHTML = `🔍 <strong>이전 고양이 사진과 특징점 대조 분석 결과</strong><br><span style="color: var(--normal);">일치율 98.4%로 동일 고양이임이 최종 확인되었습니다!</span>`;
-          foundIdDisplay.innerText = foundProfile.id;
-          findIdResultBox.style.display = 'flex';
-        } else {
-          // Original profile had no photo
-          alert("해당 계정은 최초 등록 시 고양이 사진을 등록하지 않아, 보안 정책상 사진 대조 및 ID 찾기가 불가능합니다.");
-          findIdResultBox.style.display = 'none';
-        }
-      }, 2000);
-    });
-
-    // 4.6) Copy found ID
-    btnCopyFoundId.addEventListener('click', () => {
-      const text = foundIdDisplay.innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        alert(`ID가 복사되었습니다: ${text}\n첫 화면의 로그인 입력란에 입력해 주세요.`);
-      }).catch(() => {
-        alert(`ID 복사 실패: ${text}`);
-      });
-    });
-
-    // 5) Modal buttons: Copy ID
-    btnCopyId.addEventListener('click', () => {
-      if (state.catId) {
-        navigator.clipboard.writeText(state.catId).then(() => {
-          alert(`ID가 복사되었습니다: ${state.catId}\n로그인 시 사용해 주세요.`);
-        }).catch(err => {
-          alert(`복사 실패. ID를 직접 기록해 주세요: ${state.catId}`);
-        });
-      }
-    });
-
-    // 6) Modal buttons: Close Modal and Start Test
-    btnModalClose.addEventListener('click', () => {
-      idModalOverlay.style.display = 'none';
-      state.answers = Array(10).fill(null);
-      state.currentQuestionIndex = 0;
-      showScreen('checklist-screen');
-      renderQuestion();
-    });
-
-    // 7) ID Login Handler
-    btnLoginSubmit.addEventListener('click', () => {
-      let enteredId = loginIdInput.value.trim();
-      if (!enteredId) {
-        alert("ID를 입력해 주세요!");
-        return;
-      }
-
-      // Normalize format (Always prefix with #)
-      if (!enteredId.startsWith('#')) {
-        enteredId = '#' + enteredId;
-      }
-
-      // Validate format
-      if (!/^#\d{6}$/.test(enteredId)) {
-        alert("올바르지 않은 ID 형식입니다. (# + 6자리 숫자)");
-        return;
-      }
-
-      // Load Profile
-      const storedProfile = localStorage.getItem(`cat_profile_${enteredId}`);
-      if (!storedProfile) {
-        alert("등록되지 않은 ID입니다. 고유 번호를 확인해 주세요.");
-        return;
-      }
-
-      try {
-        const profile = JSON.parse(storedProfile);
-        resetState(); // Clear temporary answers, files, etc.
-        
-        // Set logged in profile state
-        state.catId = profile.id;
-        state.catName = profile.catName;
-        state.ownerName = profile.ownerName;
-        state.catPhoto = profile.catPhoto;
-
-        // Auto-fill login field for convenience
-        loginIdInput.value = enteredId;
-
-        // Transition to checklist
+    // 1) Start Self Diagnosis directly
+    if (btnStart) {
+      btnStart.addEventListener('click', () => {
+        resetState();
         showScreen('checklist-screen');
         renderQuestion();
-      } catch (err) {
-        console.error("로그인 로드 실패:", err);
-        alert("고양이 정보를 불러오는 도중 오류가 발생했습니다.");
-      }
-    });
+      });
+    }
 
-    // 8) Start Without Registration (Guest mode)
-    document.getElementById('btn-start-no-reg').addEventListener('click', () => {
-      resetState();
-      state.catId = null;
-      state.catName = null;
-      state.ownerName = null;
-      state.catPhoto = null;
+    // Load Diagnosis from History List (Delegation)
+    const historyList = document.getElementById('history-list');
+    if (historyList) {
+      historyList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.history-item-btn');
+        if (!btn) return;
+        const historyId = btn.dataset.id;
+        loadDiagnosisFromHistory(historyId);
+      });
+    }
 
-      showScreen('checklist-screen');
-      renderQuestion();
-    });
+    // Save Current Diagnosis button click
+    const btnSaveCurrent = document.getElementById('btn-save-current');
+    if (btnSaveCurrent) {
+      btnSaveCurrent.addEventListener('click', () => {
+        saveCurrentDiagnosisToHistory();
+      });
+    }
 
     // Option Buttons in Checklist (Delegated)
-    document.getElementById('options-wrapper').addEventListener('click', (e) => {
-      const btn = e.target.closest('.option-btn');
-      if (!btn) return;
+    const optionsWrapper = document.getElementById('options-wrapper');
+    if (optionsWrapper) {
+      optionsWrapper.addEventListener('click', (e) => {
+        const btn = e.target.closest('.option-btn');
+        if (!btn) return;
 
-      const scoreValue = parseInt(btn.dataset.value, 10);
-      state.answers[state.currentQuestionIndex] = scoreValue;
+        const scoreValue = parseInt(btn.dataset.value, 10);
+        state.answers[state.currentQuestionIndex] = scoreValue;
 
-      // Highlight selected option
-      document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
+        // Highlight selected option
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
 
-      // Enable next button when an option is selected
-      btnNext.disabled = false;
-    });
+        // Enable next button when an option is selected
+        btnNext.disabled = false;
+      });
+    }
 
     // Checklist Navigation: Prev
-    btnPrev.addEventListener('click', () => {
-      if (state.currentQuestionIndex > 0) {
-        state.currentQuestionIndex--;
-        renderQuestion();
-      } else {
-        showScreen('main-screen');
-      }
-    });
+    if (btnPrev) {
+      btnPrev.addEventListener('click', () => {
+        if (state.currentQuestionIndex > 0) {
+          state.currentQuestionIndex--;
+          renderQuestion();
+        } else {
+          showScreen('main-screen');
+        }
+      });
+    }
 
     // Checklist Navigation: Next
-    btnNext.addEventListener('click', () => {
-      if (state.currentQuestionIndex < 9) {
-        state.currentQuestionIndex++;
-        renderQuestion();
-      } else {
-        showScreen('upload-screen');
-      }
-    });
+    if (btnNext) {
+      btnNext.addEventListener('click', () => {
+        if (state.currentQuestionIndex < 9) {
+          state.currentQuestionIndex++;
+          renderQuestion();
+        } else {
+          showScreen('upload-screen');
+        }
+      });
+    }
 
-    // File Input trigger for video
-    uploadArea.addEventListener('click', () => fileInput.click());
+    // File Input trigger for images
+    if (uploadArea) {
+      uploadArea.addEventListener('click', () => fileInput.click());
 
-    // File drag and drop support
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.style.borderColor = 'var(--primary)';
-      uploadArea.style.backgroundColor = 'var(--primary-light)';
-    });
+      // File drag and drop support
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--primary)';
+        uploadArea.style.backgroundColor = 'var(--primary-light)';
+      });
 
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.style.borderColor = 'rgba(255, 122, 89, 0.3)';
-      uploadArea.style.backgroundColor = 'var(--white)';
-    });
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = 'rgba(255, 122, 89, 0.3)';
+        uploadArea.style.backgroundColor = 'var(--white)';
+      });
 
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.style.borderColor = 'rgba(255, 122, 89, 0.3)';
-      uploadArea.style.backgroundColor = 'var(--white)';
-      
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleVideoFile(files[0]);
-      }
-    });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'rgba(255, 122, 89, 0.3)';
+        uploadArea.style.backgroundColor = 'var(--white)';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleImageFiles(files);
+        }
+      });
+    }
 
     // File change handler
-    fileInput.addEventListener('change', (e) => {
-      const files = e.target.files;
-      if (files.length > 0) {
-        handleVideoFile(files[0]);
-      }
-    });
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files.length > 0) {
+          handleImageFiles(files);
+        }
+      });
+    }
 
     // Upload Screen Navigation: Prev
-    document.getElementById('btn-upload-prev').addEventListener('click', () => {
-      state.currentQuestionIndex = 9;
-      showScreen('checklist-screen');
-      renderQuestion();
-    });
+    const btnUploadPrev = document.getElementById('btn-upload-prev');
+    if (btnUploadPrev) {
+      btnUploadPrev.addEventListener('click', () => {
+        state.currentQuestionIndex = 9;
+        showScreen('checklist-screen');
+        renderQuestion();
+      });
+    }
 
     // Submit for Results
-    btnSubmit.addEventListener('click', () => {
-      calculateAndShowResults();
-    });
+    if (btnSubmit) {
+      btnSubmit.addEventListener('click', () => {
+        runAiMatchingFlow();
+      });
+    }
+
+
 
     // Save Image Button
-    document.getElementById('btn-save-image').addEventListener('click', () => {
-      window.CatResult.saveAsImage('result-card');
-    });
+    const btnSaveImage = document.getElementById('btn-save-image');
+    if (btnSaveImage) {
+      btnSaveImage.addEventListener('click', () => {
+        window.CatResult.saveAsImage('result-card');
+      });
+    }
 
     // Share Button
-    document.getElementById('btn-share').addEventListener('click', () => {
-      window.CatResult.shareResult(state.totalScore, state.riskAssessment.level);
-    });
+    const btnShare = document.getElementById('btn-share');
+    if (btnShare) {
+      btnShare.addEventListener('click', () => {
+        window.CatResult.shareResult(state.totalScore, state.riskAssessment.level);
+      });
+    }
 
     // Restart Button
-    document.getElementById('btn-restart').addEventListener('click', () => {
-      showScreen('main-screen');
-      resetState();
-    });
+    const btnRestart = document.getElementById('btn-restart');
+    if (btnRestart) {
+      btnRestart.addEventListener('click', () => {
+        showScreen('main-screen');
+        resetState();
+      });
+    }
   }
 
   // State Resetter
   function resetState() {
     state.answers = Array(10).fill(null);
     state.currentQuestionIndex = 0;
-    state.isVideoUploaded = false;
-    state.videoFile = null;
+    
+    // Revoke and clear images
+    clearUploadedImageUrls();
+    
     state.totalScore = 0;
     state.riskAssessment = null;
-    state.findCatPhoto = null;
 
-    // Reset input text values
-    const catInput = document.getElementById('cat-name-input');
-    if (catInput) catInput.value = '';
+    // Reset input DOM elements
+    if (fileInput) fileInput.value = '';
     
-    loginIdInput.value = '';
-    ownerNameInput.value = '';
-    regCatNameInput.value = '';
-    photoFileInput.value = '';
+    const previewGrid = document.getElementById('image-preview-grid');
+    if (previewGrid) previewGrid.innerHTML = '';
+    if (previewContainer) previewContainer.classList.remove('active');
     
-    // Find ID inputs
-    if (findOwnerNameInput) findOwnerNameInput.value = '';
-    if (findCatNameInput) findCatNameInput.value = '';
-    if (findPhotoFileInput) findPhotoFileInput.value = '';
-
-    // Reset Photo previews
-    photoPreviewBox.style.backgroundImage = 'none';
-    photoPlaceholder.style.display = 'block';
+    // Reset receipt elements
+    const receiptImagesGrid = document.getElementById('receipt-images-grid');
+    if (receiptImagesGrid) receiptImagesGrid.innerHTML = '';
     
-    if (findPhotoPreviewBox) findPhotoPreviewBox.style.backgroundImage = 'none';
-    if (findPhotoPlaceholder) findPhotoPlaceholder.style.display = 'block';
+    const receiptImagesSection = document.getElementById('receipt-images-section');
+    if (receiptImagesSection) receiptImagesSection.style.display = 'none';
+    
+    const receiptImagesDivider = document.getElementById('receipt-images-divider');
+    if (receiptImagesDivider) receiptImagesDivider.style.display = 'none';
 
-    // Hide retrieval boxes
-    if (findIdLoadingBox) findIdLoadingBox.style.display = 'none';
-    if (findIdResultBox) findIdResultBox.style.display = 'none';
+    // Reset receipt catpoints
+    const receiptCatpointsList = document.getElementById('receipt-catpoints-list');
+    if (receiptCatpointsList) receiptCatpointsList.innerHTML = '';
 
-    // Reset video input DOM elements
-    fileInput.value = '';
-    previewVideo.src = '';
-    previewContainer.classList.remove('active');
-    btnSubmit.innerText = '건강 분석 결과 보기 (영상 없이 진행)';
-    btnSubmit.classList.replace('btn-primary', 'btn-secondary');
+    if (btnSubmit) {
+      btnSubmit.innerHTML = '<span style="text-align: center; line-height: 1.3;">건강 분석 결과 보기<br><span style="font-size: 0.85rem; font-weight: 600; opacity: 0.9;">(사진 없이 진행)</span></span>';
+      btnSubmit.classList.replace('btn-primary', 'btn-secondary');
+    }
   }
 
   // SPA Screen Toggle & Progress Bar Update
@@ -496,14 +255,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update Progress Bar
     let progress = 0;
-    if (screenId === 'registration-screen') {
-      progress = 8;
-    } else if (screenId === 'find-id-screen') {
-      progress = 8;
+    if (screenId === 'main-screen') {
+      progress = 0;
     } else if (screenId === 'checklist-screen') {
-      progress = 15 + ((state.currentQuestionIndex + 1) / 10) * 60;
+      progress = 10 + ((state.currentQuestionIndex + 1) / 10) * 70;
     } else if (screenId === 'upload-screen') {
-      progress = 85;
+      progress = 90;
+    } else if (screenId === 'loading-screen') {
+      progress = 95;
     } else if (screenId === 'result-screen') {
       progress = 100;
     }
@@ -521,28 +280,64 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render texts
     document.getElementById('q-progress').innerText = `질문 ${state.currentQuestionIndex + 1} / 10`;
     document.getElementById('q-text').innerText = question.question;
-    document.getElementById('q-desc').innerText = question.description;
+
+    // Render Cat Point
+    const catPointContainer = document.getElementById('q-catpoint-container');
+    const catPointText = document.getElementById('q-catpoint');
+    if (catPointContainer && catPointText) {
+      if (question.catPoint) {
+        catPointText.innerText = question.catPoint;
+        catPointContainer.style.display = 'block';
+      } else {
+        catPointContainer.style.display = 'none';
+      }
+    }
 
     // Clear and build options
     const optionsWrapper = document.getElementById('options-wrapper');
     optionsWrapper.innerHTML = '';
 
     const options = [
-      { text: '없음', value: 0 },
-      { text: '약간 있음', value: 1 },
-      { text: '자주 있음', value: 2 }
+      { text: '없음', value: 0, badgeText: '양호', badgeClass: 'badge-none' },
+      { text: '약간 있음', value: 1, badgeText: '주의', badgeClass: 'badge-mild' },
+      { text: '자주 있음', value: 2, badgeText: '심각', badgeClass: 'badge-severe' }
     ];
 
     const currentAnswer = state.answers[state.currentQuestionIndex];
 
     options.forEach(opt => {
       const button = document.createElement('button');
-      button.className = 'option-btn';
+      button.className = 'option-btn option-btn-with-img';
       if (currentAnswer === opt.value) {
         button.classList.add('selected');
       }
       button.dataset.value = opt.value;
-      button.innerHTML = `<span>${opt.text}</span>`;
+      
+      // Render standard PNG image directly (disable SVG icons)
+      const questionId = state.currentQuestionIndex + 1;
+      let imageUrl = 'assets/status_none.png';
+      if (question.images && Array.isArray(question.images) && question.images[opt.value]) {
+        imageUrl = question.images[opt.value];
+      } else if (question.image) {
+        imageUrl = question.image;
+      }
+      const visualContent = `<img src="${imageUrl}" class="option-img" alt="${opt.text}">`;
+      
+      const statusClassMap = {
+        0: 'status-none',
+        1: 'status-mild',
+        2: 'status-severe'
+      };
+      
+      button.innerHTML = `
+        <div class="option-btn-content">
+          <div class="img-container ${statusClassMap[opt.value]}">
+            ${visualContent}
+            <span class="option-badge ${opt.badgeClass}">${opt.badgeText}</span>
+          </div>
+          <span class="option-txt">${opt.text}</span>
+        </div>
+      `;
       optionsWrapper.appendChild(button);
     });
 
@@ -550,263 +345,638 @@ document.addEventListener('DOMContentLoaded', () => {
     btnNext.disabled = (currentAnswer === null);
   }
 
-  // Handle uploaded video file and validate constraints (Max 10s, Max 50MB)
-  function handleVideoFile(file) {
-    if (!file) return;
+  // Handle uploaded image files
+  function handleImageFiles(files) {
+    if (!files || files.length === 0) return;
 
-    // Check File Mime type
-    if (!file.type.startsWith('video/')) {
-      alert("비디오 파일만 업로드할 수 있습니다.");
-      return;
-    }
+    const validFiles = [];
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit per file
 
-    // Constraint: 1. Max Size (50MB)
-    const MAX_SIZE = 50 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      alert("영상 크기가 너무 큽니다. 최대 50MB 이내의 영상만 가능합니다.");
-      return;
-    }
-
-    // Constraint: 2. Max Duration (10s)
-    const videoUrl = URL.createObjectURL(file);
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    tempVideo.src = videoUrl;
-
-    const originalSubmitText = btnSubmit.innerText;
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = '<span class="spinner"></span> 영상 확인 중...';
-
-    tempVideo.onloadedmetadata = function() {
-      URL.revokeObjectURL(videoUrl);
-      const duration = tempVideo.duration;
-
-      if (duration > 10.5) {
-        alert("영상 길이가 10초를 초과합니다. 10초 이내의 영상만 업로드해 주세요.");
-        fileInput.value = '';
-        state.isVideoUploaded = false;
-        state.videoFile = null;
-        previewContainer.classList.remove('active');
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = '건강 분석 결과 보기 (영상 없이 진행)';
-        btnSubmit.classList.replace('btn-primary', 'btn-secondary');
-      } else {
-        state.videoFile = file;
-        state.isVideoUploaded = true;
-
-        videoNameText.innerText = file.name;
-        videoSizeText.innerText = `${(file.size / (1024 * 1024)).toFixed(2)} MB (${Math.round(duration)}초)`;
-
-        previewVideo.src = URL.createObjectURL(file);
-        previewContainer.classList.add('active');
-
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = '건강 분석 결과 보기';
-        btnSubmit.classList.replace('btn-secondary', 'btn-primary');
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith('image/')) {
+        alert("이미지 파일만 업로드할 수 있습니다.");
+        continue;
       }
-    };
+      if (file.size > MAX_SIZE) {
+        alert(`파일 크기가 너무 큽니다: ${file.name} (최대 10MB)`);
+        continue;
+      }
+      validFiles.push(file);
+    }
 
-    tempVideo.onerror = function() {
-      URL.revokeObjectURL(videoUrl);
-      alert("비디오 메타데이터를 불러오지 못했습니다. 다른 동영상 포맷을 시도해 주세요.");
-      btnSubmit.disabled = false;
-      btnSubmit.innerText = '건강 분석 결과 보기 (영상 없이 진행)';
-    };
+    if (state.uploadedImages.length + validFiles.length > 4) {
+      alert("최대 4장의 사진만 업로드할 수 있습니다.");
+      return;
+    }
+
+    validFiles.forEach(file => {
+      const objectUrl = URL.createObjectURL(file);
+      state.uploadedImages.push({ file, objectUrl });
+    });
+
+    renderImagePreviews();
+    updateSubmitButtonText();
+  }
+
+  // Render Image Previews in Upload Screen
+  function renderImagePreviews() {
+    const previewGrid = document.getElementById('image-preview-grid');
+    const uploadCount = document.getElementById('upload-count');
+
+    if (!previewGrid || !previewContainer || !uploadCount) return;
+
+    previewGrid.innerHTML = '';
+
+    if (state.uploadedImages.length > 0) {
+      previewContainer.classList.add('active');
+      uploadCount.innerText = state.uploadedImages.length;
+
+      state.uploadedImages.forEach((imgObj, index) => {
+        const item = document.createElement('div');
+        item.className = 'image-preview-item';
+
+        const img = document.createElement('img');
+        img.src = imgObj.objectUrl;
+        img.alt = `Cat Photo ${index + 1}`;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove-image';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.dataset.index = index;
+        
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeUploadedImage(index);
+        });
+
+        item.appendChild(img);
+        item.appendChild(removeBtn);
+        previewGrid.appendChild(item);
+      });
+    } else {
+      previewContainer.classList.remove('active');
+      uploadCount.innerText = '0';
+    }
+  }
+
+  // Remove individual image
+  function removeUploadedImage(index) {
+    const removed = state.uploadedImages.splice(index, 1)[0];
+    if (removed && removed.objectUrl) {
+      URL.revokeObjectURL(removed.objectUrl);
+    }
+    renderImagePreviews();
+    updateSubmitButtonText();
+  }
+
+  // Update Next/Submit Button text based on image count
+  function updateSubmitButtonText() {
+    if (btnSubmit) {
+      if (state.uploadedImages.length > 0) {
+        btnSubmit.innerHTML = '건강 분석 결과 보기';
+        btnSubmit.classList.replace('btn-secondary', 'btn-primary');
+      } else {
+        btnSubmit.innerHTML = '<span style="text-align: center; line-height: 1.3;">건강 분석 결과 보기<br><span style="font-size: 0.85rem; font-weight: 600; opacity: 0.9;">(사진 없이 진행)</span></span>';
+        btnSubmit.classList.replace('btn-primary', 'btn-secondary');
+      }
+    }
+  }
+
+  // Clear all uploaded image Object URLs
+  function clearUploadedImageUrls() {
+    state.uploadedImages.forEach(item => {
+      if (item.objectUrl) {
+        URL.revokeObjectURL(item.objectUrl);
+      }
+    });
+    state.uploadedImages = [];
+  }
+
+  // Run the 3-second AI matching flow before showing results
+  function runAiMatchingFlow() {
+    showScreen('loading-screen');
+    
+    const progressFill = document.getElementById('loading-progress-fill');
+    const percentText = document.getElementById('loading-percent');
+    
+    const duration = 3000; // 3 seconds
+    const intervalTime = 30; // 30ms updates
+    let elapsed = 0;
+    
+    if (progressFill) progressFill.style.width = '0%';
+    if (percentText) percentText.innerText = '0';
+    
+    const interval = setInterval(() => {
+      elapsed += intervalTime;
+      const percent = Math.min(Math.round((elapsed / duration) * 100), 100);
+      
+      if (progressFill) progressFill.style.width = `${percent}%`;
+      if (percentText) percentText.innerText = percent;
+      
+      if (elapsed >= duration) {
+        clearInterval(interval);
+        calculateAndShowResults();
+      }
+    }, intervalTime);
   }
 
   // Calculate scores and switch to result screen
   function calculateAndShowResults() {
     const behaviorScore = window.CatScoring.calculateBehaviorScore(state.answers);
-    const videoScore = window.CatScoring.calculateVideoScore(state.isVideoUploaded);
-    const totalScore = window.CatScoring.calculateTotalScore(behaviorScore, videoScore);
+    const totalScore = window.CatScoring.calculateTotalScore(behaviorScore);
 
     state.totalScore = totalScore;
     
     // Determine risk levels
-    const assessment = window.CatScoring.getRiskAssessment(totalScore);
+    const assessment = window.CatScoring.getRiskAssessment(totalScore, state.answers);
     state.riskAssessment = assessment;
 
-    // Toggle Profile Card & Save History Conditionally based on Cat Registration
-    const profileCard = document.getElementById('result-profile-card');
-    const historySection = document.getElementById('history-section');
-    const historyPromoSection = document.getElementById('history-promo-section');
-    const resultCatTitle = document.getElementById('result-cat-name-title');
+    // 1) Update Receipt Date/Time
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    const dateEl = document.getElementById('receipt-date');
+    if (dateEl) dateEl.innerText = formattedDate;
 
-    if (state.catId) {
-      if (profileCard) {
-        profileCard.style.display = 'flex';
-        
-        document.getElementById('result-profile-name').innerText = state.catName;
-        document.getElementById('result-profile-owner').innerText = `반려인: ${state.ownerName}`;
-        document.getElementById('result-profile-id').innerText = `등록 ID: ${state.catId}`;
-        
-        const profileImg = document.getElementById('result-profile-img');
-        if (state.catPhoto) {
-          profileImg.style.backgroundImage = `url(${state.catPhoto})`;
-          profileImg.innerHTML = '';
-        } else {
-          profileImg.style.backgroundImage = 'none';
-          profileImg.innerHTML = '🐱';
-          profileImg.style.display = 'flex';
-          profileImg.style.justifyContent = 'center';
-          profileImg.style.alignItems = 'center';
-          profileImg.style.fontSize = '1.3rem';
+    // 2) Update Detail Scores
+    const behaviorScoreEl = document.getElementById('receipt-behavior-score');
+    if (behaviorScoreEl) behaviorScoreEl.innerText = `${behaviorScore} / 28`;
+
+    // 3) Update Symptoms Summary List
+    const symptomsListEl = document.getElementById('receipt-symptoms-list');
+    const symptomKeywords = [
+      "식욕 저하 (식사량 감소 및 거부)",
+      "소외 행동 (구석에 숨음)",
+      "활력 저하 (놀이/스크래칭 감소)",
+      "음수량 급증 (소변 크기 증가)",
+      "배변 습관 변화 (화장실 테러)",
+      "그루밍 이상 (핥기/털 푸석함)",
+      "이상 발성/예민 (골골송/하악질)",
+      "식빵 자세 불량 (눈 게슴츠레 뜸)",
+      "개구호흡 (입 벌리고 가쁜 숨)",
+      "보행 이상 (수직 이동 망설임)"
+    ];
+    
+    if (symptomsListEl) {
+      symptomsListEl.innerHTML = '';
+      
+      let checkedCount = 0;
+      state.answers.forEach((ans, idx) => {
+        if (ans === 1 || ans === 2) {
+          checkedCount++;
+          const item = document.createElement('div');
+          item.className = 'symptom-item';
+          
+          const statusClass = ans === 1 ? 'mild' : 'severe';
+          const statusText = ans === 1 ? '약간 있음' : '자주 있음';
+          
+          item.innerHTML = `
+            <span class="symptom-name">#${idx + 1} ${symptomKeywords[idx]}</span>
+            <span class="symptom-status ${statusClass}">${statusText}</span>
+          `;
+          symptomsListEl.appendChild(item);
         }
-      }
-
-      if (resultCatTitle) resultCatTitle.innerText = `${state.catName}의`;
+      });
       
-      if (historySection) historySection.style.display = 'block';
-      if (historyPromoSection) historyPromoSection.style.display = 'none';
-
-      const titleLabel = document.getElementById('history-title-label');
-      if (titleLabel) {
-        titleLabel.innerText = `${state.catName}의 지난 건강 측정 내역 (최근 5회)`;
+      if (checkedCount === 0) {
+        symptomsListEl.innerHTML = '<div class="symptom-item empty-symptoms">🐾 감지된 특이 증상 없음 (양호)</div>';
       }
+    }
 
-      saveHistory(totalScore, assessment.level, state.catId);
-    } else {
-      if (profileCard) profileCard.style.display = 'none';
-      if (resultCatTitle) resultCatTitle.innerText = '';
-      
-      if (historySection) historySection.style.display = 'none';
-      if (historyPromoSection) historyPromoSection.style.display = 'block';
+    // 3.5) Update Cat Points Section inside the Scoring Section (score 1 or 2)
+    const catpointsListEl = document.getElementById('receipt-catpoints-list');
+    renderCatPoints(state.answers, catpointsListEl);
+
+    // 4) Render receipt images
+    const receiptImagesSection = document.getElementById('receipt-images-section');
+    const receiptImagesDivider = document.getElementById('receipt-images-divider');
+    const receiptImagesGrid = document.getElementById('receipt-images-grid');
+    
+    if (receiptImagesGrid && receiptImagesSection && receiptImagesDivider) {
+      receiptImagesGrid.innerHTML = '';
+      if (state.uploadedImages.length > 0) {
+        state.uploadedImages.forEach((imgObj, idx) => {
+          const gridItem = document.createElement('div');
+          gridItem.className = 'receipt-image-item';
+          
+          const img = document.createElement('img');
+          img.src = imgObj.objectUrl;
+          img.alt = `Cat Photo ${idx + 1}`;
+          
+          gridItem.appendChild(img);
+          receiptImagesGrid.appendChild(gridItem);
+        });
+        receiptImagesSection.style.display = 'flex';
+        receiptImagesDivider.style.display = 'block';
+      } else {
+        receiptImagesSection.style.display = 'none';
+        receiptImagesDivider.style.display = 'none';
+      }
     }
 
     // Update Common Result UI Elements
-    document.getElementById('risk-badge').innerText = assessment.level;
-    document.getElementById('risk-badge').className = `risk-level-badge ${assessment.textClass}`;
+    const riskBadge = document.getElementById('risk-badge');
+    if (riskBadge) {
+      riskBadge.innerText = assessment.level;
+      riskBadge.className = `risk-level-badge ${assessment.textClass}`;
+    }
     
     document.getElementById('result-summary-desc').innerText = assessment.description;
-    document.getElementById('result-advice-content').innerText = assessment.advice;
     
-    const videoNotice = document.getElementById('video-score-notice');
-    if (state.isVideoUploaded) {
-      videoNotice.innerText = "+ 영상 분석 점수 5점이 반영되었습니다.";
-      videoNotice.style.display = 'block';
-    } else {
-      videoNotice.style.display = 'none';
+    const catImgEl = document.getElementById('result-cat-img');
+    if (catImgEl) {
+      catImgEl.src = assessment.image || 'assets/cat_status_1.png';
+    }
+    
+    const adviceEl = document.getElementById('result-advice-content');
+    if (adviceEl) {
+      adviceEl.innerText = assessment.advice;
+    }
+
+    // Enable/reset the save button for manual saving
+    const saveBtn = document.getElementById('btn-save-current');
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '💾 저장';
     }
 
     // Switch screen to result
     showScreen('result-screen');
-
-    // Render chart
-    setTimeout(() => {
-      window.CatResult.renderChart('result-chart', totalScore, assessment.color);
-    }, 120);
   }
 
-  // Save diagnostic to localStorage based on unique ID
-  function saveHistory(score, level, catId) {
-    if (!catId) return;
-    try {
-      const newRecord = {
-        date: new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        score: score,
-        level: level
+  // Compress and resize image to prevent localStorage quota issues
+  function compressImage(file, maxWidth = 300, maxHeight = 300) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.src = e.target.result;
       };
-
-      const storageKey = `cat_health_history_${catId}`;
-      let history = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      history.unshift(newRecord);
-      history = history.slice(0, 5); // Limit 5 items
-      localStorage.setItem(storageKey, JSON.stringify(history));
-
-      renderHistoryList(history);
-    } catch (err) {
-      console.warn("로컬스토리지를 사용할 수 없습니다:", err);
-    }
-  }
-
-  // Render history list from array
-  function renderHistoryList(history) {
-    const listContainer = document.getElementById('history-list');
-    if (!listContainer) return;
-
-    listContainer.innerHTML = '';
-    
-    if (history.length <= 1) {
-      listContainer.innerHTML = '<div class="text-center" style="font-size:0.85rem;color:var(--text-muted);padding:10px 0;">이전 측정 기록이 없습니다.</div>';
-      return;
-    }
-
-    history.slice(1).forEach(record => {
-      const item = document.createElement('div');
-      item.style.display = 'flex';
-      item.style.justify = 'space-between';
-      item.style.padding = '8px 0';
-      item.style.fontSize = '0.85rem';
-      item.style.borderBottom = '1px dashed #E2E8F0';
-
-      const dateSpan = document.createElement('span');
-      dateSpan.innerText = record.date;
-      dateSpan.style.color = 'var(--text-muted)';
-
-      const scoreSpan = document.createElement('span');
-      scoreSpan.innerHTML = `<strong>${record.score}점</strong> (${record.level})`;
-      
-      let color = 'var(--text-dark)';
-      if (record.level === '정상 범위') color = 'var(--normal)';
-      else if (record.level === '관찰 필요') color = 'var(--warn)';
-      else if (record.level === '병원 상담 권장') color = 'var(--danger)';
-      else if (record.level === '빠른 병원 방문 권장') color = 'var(--critical)';
-      scoreSpan.style.color = color;
-
-      item.appendChild(dateSpan);
-      item.appendChild(scoreSpan);
-      listContainer.appendChild(item);
+      reader.readAsDataURL(file);
     });
   }
 
-  // IMAGE COMPRESSION UTILITY: Resizes to 150x150 square for safe LocalStorage storage size (approx 10KB)
-  function compressImage(file, callback) {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const TARGET_SIZE = 150;
-        
-        let width = img.width;
-        let height = img.height;
-        const cropSize = Math.min(width, height);
-        
-        canvas.width = TARGET_SIZE;
-        canvas.height = TARGET_SIZE;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(
-          img,
-          (width - cropSize) / 2,
-          (height - cropSize) / 2,
-          cropSize,
-          cropSize,
-          0,
-          0,
-          TARGET_SIZE,
-          TARGET_SIZE
-        );
-        
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        callback(dataUrl);
+  // Save current diagnosis results
+  function saveCurrentDiagnosisToHistory() {
+    const saveBtn = document.getElementById('btn-save-current');
+    if (!saveBtn || saveBtn.disabled) return;
+
+    // Show saving status
+    const originalText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '💾 저장 중...';
+
+    // Compress images first
+    const compressionPromises = state.uploadedImages.map(imgObj => {
+      if (imgObj.file) {
+        return compressImage(imgObj.file);
+      } else {
+        return Promise.resolve(imgObj.objectUrl);
+      }
+    });
+
+    Promise.all(compressionPromises).then(base64Images => {
+      const dateEl = document.getElementById('receipt-date');
+      const formattedDate = dateEl ? dateEl.innerText : new Date().toLocaleString();
+      const behaviorScore = window.CatScoring.calculateBehaviorScore(state.answers);
+
+      const uniqueId = 'diag_' + Date.now();
+      const diagnosisData = {
+        id: uniqueId,
+        date: formattedDate,
+        answers: [...state.answers],
+        behaviorScore: behaviorScore,
+        totalScore: state.totalScore,
+        riskAssessment: state.riskAssessment,
+        images: base64Images
       };
-    };
+
+      let history = [];
+      try {
+        const rawHistory = localStorage.getItem('cat_diagnosis_history');
+        if (rawHistory) {
+          history = JSON.parse(rawHistory);
+        }
+      } catch (e) {
+        console.error('Failed to parse history:', e);
+      }
+
+      // Check if duplicate based on exact date
+      const isDuplicate = history.some(item => item.date === formattedDate);
+      if (!isDuplicate) {
+        history.unshift(diagnosisData);
+        if (history.length > 5) {
+          history = history.slice(0, 5);
+        }
+        localStorage.setItem('cat_diagnosis_history', JSON.stringify(history));
+      }
+
+      // Update button state
+      saveBtn.innerHTML = '✓ 저장됨';
+      saveBtn.disabled = true;
+
+      // Refresh list
+      renderHistoryList();
+      alert("진단 결과가 최근 기록에 저장되었습니다!");
+    }).catch(err => {
+      console.error('Failed to save diagnosis:', err);
+      alert("저장 중 오류가 발생했습니다.");
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalText;
+    });
   }
 
-  // ID GENERATOR: Produces '#xxxxxx' format, verifying unique profile in local storage
-  function generateUniqueId() {
-    let attempts = 0;
-    while (attempts < 1000) {
-      const numStr = Math.floor(100000 + Math.random() * 900000).toString();
-      const checkId = '#' + numStr;
-      if (!localStorage.getItem(`cat_profile_${checkId}`)) {
-        return checkId;
+  // Load previous diagnosis result from localStorage
+  function loadDiagnosisFromHistory(historyId) {
+    let history = [];
+    try {
+      const rawHistory = localStorage.getItem('cat_diagnosis_history');
+      if (rawHistory) {
+        history = JSON.parse(rawHistory);
       }
-      attempts++;
+    } catch (e) {
+      console.error('Failed to parse history:', e);
     }
-    return '#' + Date.now().toString().slice(-6);
+
+    const item = history.find(d => d.id === historyId);
+    if (!item) {
+      alert("해당 진단 기록을 찾을 수 없습니다.");
+      return;
+    }
+
+    try {
+      // Reset current state and load past state
+      resetState();
+      
+      state.answers = item.answers;
+      state.totalScore = item.totalScore;
+      state.riskAssessment = item.riskAssessment;
+      state.uploadedImages = item.images.map(b64 => ({ file: null, objectUrl: b64 }));
+
+      // Render Loaded Results on Receipt Card
+      // 1) Date
+      const dateEl = document.getElementById('receipt-date');
+      if (dateEl) dateEl.innerText = item.date;
+
+      // 2) Score
+      const behaviorScoreEl = document.getElementById('receipt-behavior-score');
+      if (behaviorScoreEl) behaviorScoreEl.innerText = `${item.behaviorScore} / 28`;
+
+      // 3) Symptoms summary
+      const symptomsListEl = document.getElementById('receipt-symptoms-list');
+      const symptomKeywords = [
+        "식욕 저하 (식사량 감소 및 거부)",
+        "소외 행동 (구석에 숨음)",
+        "활력 저하 (놀이/스크래칭 감소)",
+        "음수량 급증 (소변 크기 증가)",
+        "배변 습관 변화 (화장실 테러)",
+        "그루밍 이상 (핥기/털 푸석함)",
+        "이상 발성/예민 (골골송/하악질)",
+        "식빵 자세 불량 (눈 게슴츠레 뜸)",
+        "개구호흡 (입 벌리고 가쁜 숨)",
+        "보행 이상 (수직 이동 망설임)"
+      ];
+      if (symptomsListEl) {
+        symptomsListEl.innerHTML = '';
+        
+        let checkedCount = 0;
+        state.answers.forEach((ans, idx) => {
+          if (ans === 1 || ans === 2) {
+            checkedCount++;
+            const item = document.createElement('div');
+            item.className = 'symptom-item';
+            
+            const statusClass = ans === 1 ? 'mild' : 'severe';
+            const statusText = ans === 1 ? '약간 있음' : '자주 있음';
+            
+            item.innerHTML = `
+              <span class="symptom-name">#${idx + 1} ${symptomKeywords[idx]}</span>
+              <span class="symptom-status ${statusClass}">${statusText}</span>
+            `;
+            symptomsListEl.appendChild(item);
+          }
+        });
+        
+        if (checkedCount === 0) {
+          symptomsListEl.innerHTML = '<div class="symptom-item empty-symptoms">🐾 감지된 특이 증상 없음 (양호)</div>';
+        }
+      }
+
+      // 3.5) Update Cat Points Section inside the Scoring Section (score 1 or 2)
+      const catpointsListEl = document.getElementById('receipt-catpoints-list');
+      renderCatPoints(item.answers, catpointsListEl);
+
+      // 4) Images Grid
+      const receiptImagesSection = document.getElementById('receipt-images-section');
+      const receiptImagesDivider = document.getElementById('receipt-images-divider');
+      const receiptImagesGrid = document.getElementById('receipt-images-grid');
+      
+      if (receiptImagesGrid && receiptImagesSection && receiptImagesDivider) {
+        receiptImagesGrid.innerHTML = '';
+        if (state.uploadedImages.length > 0) {
+          state.uploadedImages.forEach((imgObj, idx) => {
+            const gridItem = document.createElement('div');
+            gridItem.className = 'receipt-image-item';
+            
+            const img = document.createElement('img');
+            img.src = imgObj.objectUrl;
+            img.alt = `Cat Photo ${idx + 1}`;
+            
+            gridItem.appendChild(img);
+            receiptImagesGrid.appendChild(gridItem);
+          });
+          receiptImagesSection.style.display = 'flex';
+          receiptImagesDivider.style.display = 'block';
+        } else {
+          receiptImagesSection.style.display = 'none';
+          receiptImagesDivider.style.display = 'none';
+        }
+      }
+
+      // 5) Update Badges & Texts
+      const riskBadge = document.getElementById('risk-badge');
+      if (riskBadge) {
+        riskBadge.innerText = item.riskAssessment.level;
+        riskBadge.className = `risk-level-badge ${item.riskAssessment.textClass}`;
+      }
+      document.getElementById('result-summary-desc').innerText = item.riskAssessment.description;
+      
+      const catImgEl = document.getElementById('result-cat-img');
+      if (catImgEl) {
+        catImgEl.src = item.riskAssessment.image || 'assets/cat_status_1.png';
+      }
+      
+      const adviceEl = document.getElementById('result-advice-content');
+      if (adviceEl) {
+        adviceEl.innerText = item.riskAssessment.advice;
+      }
+
+      // 6) Set save button as saved & disabled since it is loaded from history
+      const saveBtn = document.getElementById('btn-save-current');
+      if (saveBtn) {
+        saveBtn.innerHTML = '✓ 저장됨';
+        saveBtn.disabled = true;
+      }
+
+      // Show Result screen
+      showScreen('result-screen');
+
+      alert("이전 간이 진단 결과를 성공적으로 불러왔습니다!");
+    } catch (err) {
+      console.error("Failed to load diagnosis:", err);
+      alert("진단 결과를 불러오는 중 오류가 발생했습니다.");
+    }
   }
+
+  // Render history list on main screen
+  function renderHistoryList() {
+    const historyListEl = document.getElementById('history-list');
+    const historySectionEl = document.getElementById('history-section');
+    if (!historyListEl || !historySectionEl) return;
+
+    let history = [];
+    try {
+      const rawHistory = localStorage.getItem('cat_diagnosis_history');
+      if (rawHistory) {
+        history = JSON.parse(rawHistory);
+      }
+    } catch (e) {
+      console.error('Failed to load history list:', e);
+    }
+
+    if (history.length > 0) {
+      historySectionEl.style.display = 'block';
+      historyListEl.innerHTML = '';
+      history.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'history-item-btn';
+        btn.dataset.id = item.id;
+        
+        // 과거 데이터 대응 및 고양이 이미지 매핑
+        const catImgUrl = (item.riskAssessment && item.riskAssessment.image) ? item.riskAssessment.image : 'assets/cat_status_1.png';
+        
+        btn.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background-color: #F7FAFC; border: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+              <img src="${catImgUrl}" alt="진단 결과 고양이" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <span style="font-weight: 700; color: var(--text-dark); font-size: 0.88rem;">📅 ${item.date}</span>
+            <span style="margin-left: auto; font-size: 0.78rem; font-weight: 700; color: var(--primary);">상세보기 ➔</span>
+          </div>
+        `;
+        historyListEl.appendChild(btn);
+      });
+    } else {
+      historySectionEl.style.display = 'none';
+    }
+  }
+
+  // Render cat points grouped by severity and toggled with accordion
+  function renderCatPoints(answers, catpointsListEl) {
+    if (!catpointsListEl) return;
+    catpointsListEl.innerHTML = '';
+
+    const criticalIndices = [3, 4, 7, 8]; // 초응급 질문 (4, 5, 8, 9번)
+    const itemsData = [];
+
+    answers.forEach((ans, idx) => {
+      if (ans === 1 || ans === 2) {
+        const question = window.CAT_QUESTIONS[idx];
+        let severity = 0;
+        
+        // 4단계 위급도 매김 (높을수록 위험)
+        if (criticalIndices.includes(idx)) {
+          severity = ans === 2 ? 4 : 2; // 초응급 자주 있음: 4, 초응급 약간 있음: 2
+        } else {
+          severity = ans === 2 ? 3 : 1; // 일반 자주 있음: 3, 일반 약간 있음: 1
+        }
+        
+        itemsData.push({
+          idx,
+          ans,
+          question,
+          severity
+        });
+      }
+    });
+
+    if (itemsData.length === 0) return;
+
+    // 가장 높은 위급도 탐색
+    const maxSeverity = Math.max(...itemsData.map(item => item.severity));
+
+    const visibleItems = itemsData.filter(item => item.severity === maxSeverity);
+    const hiddenItems = itemsData.filter(item => item.severity < maxSeverity);
+
+    // 가장 위급한 아이템 출력
+    visibleItems.forEach(data => {
+      const item = document.createElement('div');
+      const statusClass = data.ans === 1 ? 'mild' : 'severe';
+      item.className = `catpoint-item ${statusClass}`;
+      item.innerHTML = `
+        <span class="catpoint-item-title">Q${data.idx + 1}. ${data.question.question}</span>
+        <p class="catpoint-item-text">🐾 ${data.question.catPoint}</p>
+      `;
+      catpointsListEl.appendChild(item);
+    });
+
+    // 덜 위급한 아이템이 있다면 더보기 버튼 및 아코디언 추가
+    if (hiddenItems.length > 0) {
+      const moreBtn = document.createElement('button');
+      moreBtn.className = 'receipt-catpoints-more-btn';
+      moreBtn.innerHTML = `<span>▼ 다른 관찰 사항 더보기 (${hiddenItems.length}개)</span>`;
+      
+      const hiddenWrapper = document.createElement('div');
+      hiddenWrapper.className = 'receipt-catpoints-hidden-wrapper';
+      
+      hiddenItems.forEach(data => {
+        const item = document.createElement('div');
+        const statusClass = data.ans === 1 ? 'mild' : 'severe';
+        item.className = `catpoint-item ${statusClass}`;
+        item.innerHTML = `
+          <span class="catpoint-item-title">Q${data.idx + 1}. ${data.question.question}</span>
+          <p class="catpoint-item-text">🐾 ${data.question.catPoint}</p>
+        `;
+        hiddenWrapper.appendChild(item);
+      });
+      
+      moreBtn.addEventListener('click', () => {
+        const isExpanded = hiddenWrapper.classList.toggle('active');
+        moreBtn.classList.toggle('active');
+        if (isExpanded) {
+          moreBtn.innerHTML = `<span>▲ 다른 관찰 사항 접기</span>`;
+        } else {
+          moreBtn.innerHTML = `<span>▼ 다른 관찰 사항 더보기 (${hiddenItems.length}개)</span>`;
+        }
+      });
+      
+      catpointsListEl.appendChild(moreBtn);
+      catpointsListEl.appendChild(hiddenWrapper);
+    }
+  }
+
 });

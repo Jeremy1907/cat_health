@@ -20,8 +20,8 @@ window.CatResult = {
       this.chartInstance.destroy();
     }
 
-    const maxScore = 25; // MVP 기준 최대 점수
-    const scorePercentage = Math.min(Math.round((score / maxScore) * 100), 100);
+    const maxScore = 100; // 100점 만점 기준 환산 점수를 그대로 사용
+    const scorePercentage = Math.min(Math.round(score), 100);
     const remainingPercentage = 100 - scorePercentage;
 
     // Chart.js 글로벌 폰트 설정 (Pretendard 적용 목적)
@@ -48,10 +48,37 @@ window.CatResult = {
       }
     });
 
-    // 차트 중앙 텍스트 업데이트
+    // 차트 중앙 텍스트 업데이트 (이상 징후 점수 카운트업 애니메이션)
     const textElement = document.getElementById('chart-center-text');
     if (textElement) {
-      textElement.innerHTML = `<span class="score-num" style="color: ${color}">${score}</span><span class="score-total">/${maxScore}점</span>`;
+      const duration = 1200; // 1.2초 동안 진행
+      const frameRate = 1000 / 60; // 60 FPS
+      const totalFrames = Math.round(duration / frameRate);
+      let frame = 0;
+
+      const animateScore = () => {
+        frame++;
+        const progress = frame / totalFrames;
+        // Ease-out-quad 효과 적용
+        const easeProgress = progress * (2 - progress);
+        const currentValue = Math.round(easeProgress * scorePercentage);
+
+        textElement.innerHTML = `
+          <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 2px; display: block; text-align: center; white-space: nowrap;">이상 징후</span>
+          <span class="score-num" style="color: ${color}; font-size: 2.1rem; font-weight: 800; line-height: 1;">${currentValue}점</span>
+        `;
+
+        if (frame < totalFrames) {
+          requestAnimationFrame(animateScore);
+        } else {
+          textElement.innerHTML = `
+            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 2px; display: block; text-align: center; white-space: nowrap;">이상 징후</span>
+            <span class="score-num" style="color: ${color}; font-size: 2.1rem; font-weight: 800; line-height: 1;">${scorePercentage}점</span>
+          `;
+        }
+      };
+
+      requestAnimationFrame(animateScore);
     }
   },
 
@@ -69,31 +96,54 @@ window.CatResult = {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner"></span> 이미지 생성 중...';
 
-    // html2canvas 옵션 설정 (CORS 이슈 대응, scale 향상으로 선명도 확보)
-    html2canvas(target, {
-      useCORS: true,
-      allowTaint: true,
-      scale: 2, // 해상도 높임
-      backgroundColor: '#FFF8F4' // 기본 배경색 지정
-    }).then(canvas => {
-      try {
-        const link = document.createElement('a');
-        link.download = `cat_health_result_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch (err) {
-        console.error("이미지 저장 실패:", err);
-        alert("이미지 저장 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.");
-      } finally {
+    // 캡처할 때 저장 버튼 숨기기
+    const smallSaveBtn = target.querySelector('#btn-save-current');
+    if (smallSaveBtn) smallSaveBtn.style.display = 'none';
+
+    // 캡처 시도 재귀 함수
+    const captureAttempt = (useTaint) => {
+      html2canvas(target, {
+        useCORS: true,
+        allowTaint: useTaint,
+        scale: 2,
+        backgroundColor: '#FFF8F4'
+      }).then(canvas => {
+        if (smallSaveBtn) smallSaveBtn.style.display = 'flex';
+        try {
+          const link = document.createElement('a');
+          link.download = `cat_health_result_${Date.now()}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } catch (err) {
+          console.error("이미지 변환 실패 (useTaint: " + useTaint + "):", err);
+          if (useTaint) {
+            // file:// 환경에서 캔버스 오염 에러가 발생한 경우, allowTaint를 비활성화하여 재시도
+            if (window.location.protocol === 'file:') {
+              alert("로컬 파일(file://) 환경에서는 브라우저 보안 정책(CORS)으로 인해 이미지 저장 중 일부 그림(상태 고양이 그림 등)이 제외될 수 있습니다. 웹 서버 환경(http://)에서 진단하시면 완전히 저장하실 수 있습니다.");
+            }
+            captureAttempt(false);
+          } else {
+            alert("이미지 저장 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.");
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+          }
+        } finally {
+          if (!useTaint) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+          }
+        }
+      }).catch(err => {
+        if (smallSaveBtn) smallSaveBtn.style.display = 'flex';
+        console.error("html2canvas 실행 실패:", err);
+        alert("이미지 변환에 실패했습니다.");
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;
-      }
-    }).catch(err => {
-      console.error("html2canvas 실행 실패:", err);
-      alert("이미지 변환에 실패했습니다.");
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = originalText;
-    });
+      });
+    };
+
+    // 1차적으로 true 시도 (일반 웹 서버 환경용)
+    captureAttempt(true);
   },
 
   /**
