@@ -114,6 +114,10 @@ window.CatResult = {
           link.download = `cat_health_result_${Date.now()}.png`;
           link.href = canvas.toDataURL('image/png');
           link.click();
+
+          // 캡처 및 이미지 다운로드 성공 시 버튼 복구
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalText;
         } catch (err) {
           console.error("이미지 변환 실패 (useTaint: " + useTaint + "):", err);
           if (useTaint) {
@@ -124,11 +128,6 @@ window.CatResult = {
             captureAttempt(false);
           } else {
             alert("이미지 저장 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.");
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalText;
-          }
-        } finally {
-          if (!useTaint) {
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalText;
           }
