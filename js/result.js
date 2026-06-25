@@ -100,49 +100,57 @@ window.CatResult = {
     const smallSaveBtn = target.querySelector('#btn-save-current');
     if (smallSaveBtn) smallSaveBtn.style.display = 'none';
 
-    // 캡처 시도 재귀 함수
-    const captureAttempt = (useTaint) => {
-      html2canvas(target, {
-        useCORS: true,
-        allowTaint: useTaint,
-        scale: 2,
-        backgroundColor: '#FFF8F4'
-      }).then(canvas => {
-        if (smallSaveBtn) smallSaveBtn.style.display = 'flex';
-        try {
-          const link = document.createElement('a');
-          link.download = `cat_health_result_${Date.now()}.png`;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
+    const isFileProtocol = (window.location.protocol === 'file:');
+    
+    // 로컬 파일 환경인 경우 캔버스 오염 방지를 위해 이미지 태그 임시 제외 처리
+    let ignoredImages = [];
+    if (isFileProtocol) {
+      ignoredImages = Array.from(target.querySelectorAll('img'));
+      ignoredImages.forEach(img => {
+        img.setAttribute('data-html2canvas-ignore', 'true');
+      });
+      alert("로컬 실행(file://) 환경에서는 브라우저 보안 규격(CORS)으로 인해 저장된 결과 이미지 내 일부 그림(상태 고양이 그림 등)이 제외될 수 있습니다. 웹 서버 환경(http://)에서 진단 및 저장하시면 온전하게 저장됩니다.");
+    }
 
-          // 캡처 및 이미지 다운로드 성공 시 버튼 복구
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalText;
-        } catch (err) {
-          console.error("이미지 변환 실패 (useTaint: " + useTaint + "):", err);
-          if (useTaint) {
-            // file:// 환경에서 캔버스 오염 에러가 발생한 경우, allowTaint를 비활성화하여 재시도
-            if (window.location.protocol === 'file:') {
-              alert("로컬 파일(file://) 환경에서는 브라우저 보안 정책(CORS)으로 인해 이미지 저장 중 일부 그림(상태 고양이 그림 등)이 제외될 수 있습니다. 웹 서버 환경(http://)에서 진단하시면 완전히 저장하실 수 있습니다.");
-            }
-            captureAttempt(false);
-          } else {
-            alert("이미지 저장 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.");
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalText;
-          }
-        }
-      }).catch(err => {
-        if (smallSaveBtn) smallSaveBtn.style.display = 'flex';
-        console.error("html2canvas 실행 실패:", err);
-        alert("이미지 변환에 실패했습니다.");
+    html2canvas(target, {
+      useCORS: true,
+      allowTaint: !isFileProtocol,
+      scale: 2,
+      backgroundColor: '#FFF8F4'
+    }).then(canvas => {
+      // 캡처 완료 후 이미지 제외 속성 복구
+      if (isFileProtocol) {
+        ignoredImages.forEach(img => {
+          img.removeAttribute('data-html2canvas-ignore');
+        });
+      }
+      if (smallSaveBtn) smallSaveBtn.style.display = 'flex';
+
+      try {
+        const link = document.createElement('a');
+        link.download = `cat_health_result_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error("이미지 변환 실패:", err);
+        alert("이미지 저장 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.");
+      } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;
-      });
-    };
-
-    // 1차적으로 true 시도 (일반 웹 서버 환경용)
-    captureAttempt(true);
+      }
+    }).catch(err => {
+      // 에러 발생 시 속성 복구
+      if (isFileProtocol) {
+        ignoredImages.forEach(img => {
+          img.removeAttribute('data-html2canvas-ignore');
+        });
+      }
+      if (smallSaveBtn) smallSaveBtn.style.display = 'flex';
+      console.error("html2canvas 실행 실패:", err);
+      alert("이미지 변환에 실패했습니다.");
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalText;
+    });
   },
 
   /**
